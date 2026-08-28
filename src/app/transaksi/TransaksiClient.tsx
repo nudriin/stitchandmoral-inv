@@ -618,31 +618,13 @@ export function TransaksiClient({
       return;
     }
 
-    const itemsText = tx.items
-      ?.map(
-        (i) => `  • ${i.namaJas} (${i.warna || "-"}/${i.ukuran || "-"}) x${i.jumlah} = ${formatRupiah(i.harga * i.jumlah)}`
-      )
-      .join("\n");
+    const message = `Halo Kak ${tx.nama_customer}, berikut bukti struk sewa jas dari *Stitch & Moral*:
 
-    const message = `🧥 *Struk Sewa Jas - Stitch & Moral*
-━━━━━━━━━━━━━━━━━━━
-No Transaksi : ${tx.kode_transaksi}
-Customer     : ${tx.nama_customer}
-Tgl Sewa     : ${formatDateIndo(tx.tanggal_sewa)}
-Tgl Kembali  : ${formatDateIndo(tx.tanggal_kembali)}
-━━━━━━━━━━━━━━━━━━━
-*Item yang Disewa:*
-${itemsText}
-━━━━━━━━━━━━━━━━━━━
-Subtotal  : ${formatRupiah(tx.subtotal)}
-Deposit   : ${formatRupiah(tx.deposit)}
-${tx.potongan > 0 ? `Potongan  : -${formatRupiah(tx.potongan)}\n` : ""}*Total Bayar : ${formatRupiah(tx.total_bayar)}*
-━━━━━━━━━━━━━━━━━━━
-Status Sewa       : ${tx.status}
-Status Pembayaran : *${tx.status_pembayaran}*
-Sudah Dibayar     : ${formatRupiah(tx.jumlah_dibayar)}
-${tx.sisa_pembayaran > 0 ? `Sisa Pembayaran   : ${formatRupiah(tx.sisa_pembayaran)}\n` : ""}
-Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
+📄 *No. Transaksi:* ${tx.kode_transaksi}
+📅 *Sewa:* ${formatDateIndo(tx.tanggal_sewa)} s/d ${formatDateIndo(tx.tanggal_kembali)}
+💰 *Total:* ${formatRupiah(tx.total_bayar)} (${tx.status_pembayaran === "Lunas" ? "LUNAS ✓" : `Sisa ${formatRupiah(tx.sisa_pembayaran)}`})
+
+File struk resmi terlampir. Terima kasih! 🙏`;
 
     setSharingWa(true);
     try {
@@ -683,31 +665,13 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
       return;
     }
 
-    const itemsText = tx.items
-      ?.map(
-        (i) => `  • ${i.namaJas} (${i.warna || "-"}/${i.ukuran || "-"}) x${i.jumlah} = ${formatRupiah(i.harga * i.jumlah)}`
-      )
-      .join("\n");
+    const message = `Halo Kak ${tx.nama_customer}, berikut bukti dokumen struk sewa jas (PDF) dari *Stitch & Moral*:
 
-    const message = `📄 *Struk Dokumen Sewa Jas (PDF) - Stitch & Moral*
-━━━━━━━━━━━━━━━━━━━
-No Transaksi : ${tx.kode_transaksi}
-Customer     : ${tx.nama_customer}
-Tgl Sewa     : ${formatDateIndo(tx.tanggal_sewa)}
-Tgl Kembali  : ${formatDateIndo(tx.tanggal_kembali)}
-━━━━━━━━━━━━━━━━━━━
-*Item yang Disewa:*
-${itemsText}
-━━━━━━━━━━━━━━━━━━━
-Subtotal  : ${formatRupiah(tx.subtotal)}
-Deposit   : ${formatRupiah(tx.deposit)}
-${tx.potongan > 0 ? `Potongan  : -${formatRupiah(tx.potongan)}\n` : ""}*Total Bayar : ${formatRupiah(tx.total_bayar)}*
-━━━━━━━━━━━━━━━━━━━
-Status Sewa       : ${tx.status}
-Status Pembayaran : *${tx.status_pembayaran}*
-Sudah Dibayar     : ${formatRupiah(tx.jumlah_dibayar)}
-${tx.sisa_pembayaran > 0 ? `Sisa Pembayaran   : ${formatRupiah(tx.sisa_pembayaran)}\n` : ""}
-Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
+📄 *No. Transaksi:* ${tx.kode_transaksi}
+📅 *Sewa:* ${formatDateIndo(tx.tanggal_sewa)} s/d ${formatDateIndo(tx.tanggal_kembali)}
+💰 *Total:* ${formatRupiah(tx.total_bayar)} (${tx.status_pembayaran === "Lunas" ? "LUNAS ✓" : `Sisa ${formatRupiah(tx.sisa_pembayaran)}`})
+
+Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
 
     setSharingPdf(true);
     try {
@@ -756,12 +720,12 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
         (item) => `
         <tr>
           <td>
-            <b>${item.namaJas}</b><br>
-            <span style="color:#666; font-size:11px">${item.warna || "-"} / ${item.ukuran || "-"}</span>
+            <div style="font-weight:700; color:#0f172a; font-size:12px">${item.namaJas}</div>
+            <div style="color:#64748b; font-size:10.5px">${item.warna || "-"} • Ukuran ${item.ukuran || "-"}</div>
           </td>
-          <td style="text-align:right">${item.jumlah}</td>
-          <td style="text-align:right">${formatRupiah(item.harga)}</td>
-          <td style="text-align:right"><b>${formatRupiah(item.harga * item.jumlah)}</b></td>
+          <td style="text-align:center; font-family:'Roboto', sans-serif; font-size:12px">${item.jumlah}</td>
+          <td style="text-align:right; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(item.harga)}</td>
+          <td style="text-align:right; font-weight:700; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(item.harga * item.jumlah)}</td>
         </tr>
       `
       )
@@ -777,11 +741,14 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Struk Sewa Jas - ${tx.kode_transaksi}</title>
+          <title>Invoice & Struk Sewa - ${tx.kode_transaksi}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm;
+              margin: 12mm 15mm;
             }
             * {
               box-sizing: border-box;
@@ -789,126 +756,177 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
               print-color-adjust: exact;
             }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
               margin: 0;
-              padding: 24px;
-              color: #111827;
+              padding: 20px;
+              color: #0f172a;
               background: #fff;
+              font-size: 12px;
+              line-height: 1.5;
             }
-            .receipt {
-              width: 100%;
-              max-width: 100%;
+            .invoice-box {
+              max-width: 680px;
               margin: 0 auto;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 24px 28px;
             }
-            h1 {
-              font-size: 22px;
-              font-weight: 800;
-              margin: 0 0 4px;
+            .brand-header {
               text-align: center;
-              letter-spacing: -0.3px;
+              margin-bottom: 12px;
             }
-            .muted {
-              color: #6b7280;
-              font-size: 13px;
-              text-align: center;
-              margin-bottom: 24px;
+            .brand-title {
+              font-size: 20px;
+              font-weight: 900;
+              letter-spacing: 1px;
+              color: #0f172a;
+              margin: 0;
             }
-            .meta-grid {
+            .brand-sub {
+              font-size: 10px;
+              font-weight: 700;
+              letter-spacing: 1.5px;
+              color: #64748b;
+              margin-top: 2px;
+            }
+            .single-divider {
+              border-top: 1px solid #e2e8f0;
+              margin: 12px 0 16px;
+            }
+            .grid-meta {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 12px;
-              font-size: 13px;
-              line-height: 1.6;
-              padding-bottom: 14px;
-              border-bottom: 1px dashed #d1d5db;
+              gap: 16px;
+              font-size: 11.5px;
+              padding-bottom: 12px;
+              border-bottom: 1px solid #f1f5f9;
+            }
+            .meta-label {
+              color: #64748b;
+              font-size: 10px;
+              font-weight: 500;
+            }
+            .meta-value {
+              color: #0f172a;
+              font-weight: 700;
+              font-size: 12.5px;
+              margin-bottom: 4px;
             }
             table {
               width: 100%;
               border-collapse: collapse;
-              margin: 20px 0;
+              margin: 14px 0;
             }
             th {
-              border-bottom: 2px solid #374151;
-              padding: 10px 4px;
-              font-size: 13px;
+              color: #64748b;
+              padding: 6px 8px;
+              font-size: 10px;
               font-weight: 700;
+              letter-spacing: 0.5px;
+              border-top: 1px solid #cbd5e1;
+              border-bottom: 1px solid #e2e8f0;
               text-align: left;
-              color: #111827;
             }
             td {
-              border-bottom: 1px solid #e5e7eb;
-              padding: 10px 4px;
-              font-size: 13px;
-              text-align: left;
+              padding: 8px 8px;
+              border-bottom: 1px solid #f8fafc;
               vertical-align: top;
             }
-            th:nth-child(n+2),
-            td:nth-child(n+2) {
-              text-align: right;
+            .financial-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 6px;
+              font-size: 11.5px;
             }
-            .financial-section {
-              font-size: 13px;
-              line-height: 1.7;
-              margin-top: 14px;
+            .financial-table td {
+              padding: 3px 8px;
+              border: none;
             }
-            .total-row {
-              font-weight: 800;
-              font-size: 16px;
-              color: #111827;
-              padding: 8px 0;
-              border-top: 1px solid #e5e7eb;
-              border-bottom: 1px solid #e5e7eb;
-              margin: 8px 0;
-            }
-            .badge-lunas {
-              display: inline-block;
-              padding: 2px 8px;
-              background: #ecfdf5;
-              color: #047857;
-              font-weight: 700;
-              border-radius: 4px;
-              border: 1px solid #a7f3d0;
-            }
-            .footer-note {
-              text-align: center;
-              margin-top: 40px;
+            .total-banner {
+              background: #0f172a;
+              color: #fff;
+              font-weight: bold;
+              border-radius: 6px;
+              padding: 8px 12px;
+              margin: 10px 0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
               font-size: 12px;
-              color: #6b7280;
-              border-top: 1px dashed #d1d5db;
-              padding-top: 14px;
+            }
+            .total-banner span:last-child {
+              font-size: 15px;
+              color: #34d399;
+              font-weight: 900;
+            }
+            .terms-box {
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              padding: 10px 14px;
+              margin-top: 18px;
+              font-size: 10px;
+              color: #475569;
+              line-height: 1.5;
+            }
+            .terms-title {
+              font-weight: 700;
+              color: #0f172a;
+              margin-bottom: 4px;
+              font-size: 10px;
+            }
+            .footer-info {
+              text-align: center;
+              margin-top: 16px;
+              font-size: 9.5px;
+              color: #64748b;
             }
             @media print {
               body {
+                padding: 0;
+              }
+              .invoice-box {
+                border: none;
                 padding: 0;
               }
             }
           </style>
         </head>
         <body>
-          <div class="receipt">
-            <h1>Stitch and Moral - Sewa Jas PKY</h1>
-            <div class="muted">Struk Bukti Sewa & Transaksi</div>
+          <div class="invoice-box">
+            <div class="brand-header">
+              <h1 class="brand-title">STITCH & MORAL</h1>
+              <div class="brand-sub">SEWA JAS & TUXEDO PALANGKARAYA</div>
+            </div>
 
-            <div class="meta-grid">
+            <div class="single-divider"></div>
+
+            <div class="grid-meta">
               <div>
-                <b>No. Transaksi:</b> ${tx.kode_transaksi}<br>
-                <b>Customer:</b> ${tx.nama_customer}<br>
-                <b>WhatsApp:</b> +${tx.whatsapp || "-"}
+                <div class="meta-label">No. Transaksi</div>
+                <div class="meta-value">${tx.kode_transaksi}</div>
+
+                <div class="meta-label">Customer</div>
+                <div class="meta-value">${tx.nama_customer}</div>
+                <div style="color:#64748b; font-size:10.5px">WhatsApp: +${tx.whatsapp || "-"}</div>
               </div>
               <div style="text-align:right">
-                <b>Tanggal Sewa:</b> ${formatDateIndo(tx.tanggal_sewa)}<br>
-                <b>Tanggal Kembali:</b> ${formatDateIndo(tx.tanggal_kembali)}<br>
-                <b>Status Sewa:</b> ${tx.status}
+                <div class="meta-label">Tgl Mulai Sewa</div>
+                <div class="meta-value" style="font-weight:500">${formatDateIndo(tx.tanggal_sewa)}</div>
+
+                <div class="meta-label">Tgl Wajib Kembali</div>
+                <div class="meta-value" style="color:#0f172a">${formatDateIndo(tx.tanggal_kembali)}</div>
+                <div style="color:#64748b; font-size:10.5px">Status: <b>${tx.status}</b></div>
               </div>
             </div>
 
             <table>
               <thead>
                 <tr>
-                  <th>Item / Varian</th>
-                  <th>Qty</th>
-                  <th>Harga Sewa</th>
-                  <th>Total</th>
+                  <th>ITEM / VARIAN</th>
+                  <th style="text-align:center">QTY</th>
+                  <th style="text-align:right">HARGA</th>
+                  <th style="text-align:right">TOTAL</th>
                 </tr>
               </thead>
               <tbody>
@@ -916,56 +934,67 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
               </tbody>
             </table>
 
-            <div class="financial-section">
-              <div style="display:flex; justify-content:space-between">
-                <span>Subtotal:</span>
-                <span>${formatRupiah(tx.subtotal)}</span>
-              </div>
+            <table class="financial-table">
+              <tr>
+                <td style="color:#64748b">Subtotal Sewa</td>
+                <td style="text-align:right" class="font-medium">${formatRupiah(tx.subtotal)}</td>
+              </tr>
               ${tx.deposit > 0 ? `
-              <div style="display:flex; justify-content:space-between">
-                <span>Deposit Jaminan:</span>
-                <span>${formatRupiah(tx.deposit)}</span>
-              </div>` : ""}
+              <tr>
+                <td style="color:#64748b">Deposit Jaminan</td>
+                <td style="text-align:right">${formatRupiah(tx.deposit)}</td>
+              </tr>` : ""}
               ${tx.potongan > 0 ? `
-              <div style="display:flex; justify-content:space-between; color:#047857">
-                <span>Potongan / Diskon:</span>
-                <span>-${formatRupiah(tx.potongan)}</span>
-              </div>` : ""}
+              <tr style="color:#059669">
+                <td>Potongan Diskon</td>
+                <td style="text-align:right; font-weight:700">-${formatRupiah(tx.potongan)}</td>
+              </tr>` : ""}
               ${tx.denda > 0 ? `
-              <div style="display:flex; justify-content:space-between; color:#b91c1c">
-                <span>Denda Keterlambatan:</span>
-                <span>+${formatRupiah(tx.denda)}</span>
-              </div>` : ""}
+              <tr style="color:#e11d48">
+                <td>Denda Keterlambatan</td>
+                <td style="text-align:right; font-weight:700">+${formatRupiah(tx.denda)}</td>
+              </tr>` : ""}
+            </table>
 
-              <div class="total-row" style="display:flex; justify-content:space-between">
-                <span>TOTAL BAYAR:</span>
-                <span>${formatRupiah(tx.total_bayar)}</span>
-              </div>
-
-              <div style="display:flex; justify-content:space-between">
-                <span>Sudah Dibayar:</span>
-                <span><b>${formatRupiah(tx.jumlah_dibayar || 0)}</b></span>
-              </div>
-
-              ${tx.sisa_pembayaran > 0 ? `
-              <div style="display:flex; justify-content:space-between; color:#b91c1c; font-weight:700">
-                <span>Sisa Pembayaran:</span>
-                <span>${formatRupiah(tx.sisa_pembayaran)}</span>
-              </div>` : `
-              <div style="display:flex; justify-content:space-between; margin-top:4px">
-                <span>Status Pembayaran:</span>
-                <span class="badge-lunas">LUNAS ✓</span>
-              </div>`}
-
-              ${tx.catatan ? `
-              <div style="margin-top:10px; color:#4b5563">
-                <b>Catatan:</b> ${tx.catatan}
-              </div>` : ""}
+            <div class="total-banner">
+              <span>TOTAL PEMBAYARAN</span>
+              <span>${formatRupiah(tx.total_bayar)}</span>
             </div>
 
-            <div class="footer-note">
-              Terima kasih telah menyewa jas di <b>Stitch and Moral</b>.<br>
-              Harap simpan struk ini sebagai bukti pengambilan & pengembalian jas.
+            <table class="financial-table">
+              <tr>
+                <td style="color:#64748b">Sudah Dibayar</td>
+                <td style="text-align:right; font-weight:700">${formatRupiah(tx.jumlah_dibayar || 0)}</td>
+              </tr>
+              ${tx.sisa_pembayaran > 0 ? `
+              <tr style="color:#e11d48; font-weight:700">
+                <td>Sisa Pembayaran</td>
+                <td style="text-align:right">${formatRupiah(tx.sisa_pembayaran)}</td>
+              </tr>` : `
+              <tr>
+                <td colspan="2" style="text-align:center; background:#ecfdf5; color:#047857; font-weight:700; padding:5px; border-radius:4px; font-size:10.5px">
+                  ✓ STATUS: PEMBAYARAN SUDAH LUNAS
+                </td>
+              </tr>`}
+              ${tx.catatan ? `
+              <tr>
+                <td colspan="2" style="color:#64748b; font-style:italic; padding-top:4px">
+                  Catatan: ${tx.catatan}
+                </td>
+              </tr>` : ""}
+            </table>
+
+            <div class="terms-box">
+              <div class="terms-title">SYARAT & KETENTUAN SEWA:</div>
+              <div>1. Wajib menitipkan kartu identitas asli (KTP/SIM) selama masa sewa.</div>
+              <div>2. Sistem sewa H-1 ambil & H+1 kembali. Keterlambatan dikenakan denda harian.</div>
+              <div>3. Dilarang mencuci / menyetrika jas sendiri (laundry ditangani toko).</div>
+              <div>4. Kerusakan / kehilangan jas & aksesoris dikenakan biaya penggantian.</div>
+              <div>5. Harap cek kondisi jas saat serah terima & simpan struk ini.</div>
+            </div>
+
+            <div class="footer-info">
+              <div>Stitch & Moral &nbsp;•&nbsp; WA: 081549193834 &nbsp;•&nbsp; Jl. Pangeran Samudera Induk No. 11, Palangka Raya</div>
             </div>
           </div>
 
@@ -1774,107 +1803,145 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
             <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-50 dark:bg-zinc-950/60">
               <div
                 id="printableReceipt"
-                className="bg-white text-zinc-950 p-5 sm:p-8 rounded-2xl border border-slate-200 font-sans shadow-sm text-xs space-y-4"
+                className="bg-white text-slate-900 p-5 sm:p-7 rounded-2xl border border-slate-200 font-sans shadow-sm text-xs space-y-4"
               >
-                <div>
-                  <h1 className="text-lg sm:text-xl font-bold text-center text-slate-900 tracking-tight">
-                    Stitch and Moral - Sewa Jas PKY
+                {/* Header: Minimalist Brand */}
+                <div className="text-center space-y-0.5">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                    STITCH & MORAL
                   </h1>
-                  <p className="text-center text-slate-500 text-xs mt-0.5">Struk Bukti Sewa & Transaksi</p>
+                  <p className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+                    SEWA JAS & TUXEDO PALANGKARAYA
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-slate-700 leading-relaxed border-y border-dashed border-slate-200 py-3 text-[11px] sm:text-xs">
-                  <div>
-                    <p>No: <b>{selectedTx.kode_transaksi}</b></p>
-                    <p>Customer: <b>{selectedTx.nama_customer}</b></p>
-                    <p>WhatsApp: +{selectedTx.whatsapp || "-"}</p>
+                {/* Single Subtle Divider */}
+                <div className="border-t border-slate-200 my-2" />
+
+                {/* Meta Grid */}
+                <div className="grid grid-cols-2 gap-3 text-slate-700 leading-relaxed border-b border-slate-100 pb-3 text-[11px] sm:text-xs">
+                  <div className="space-y-1">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">No. Transaksi</span>
+                      <span className="font-bold text-slate-900">{selectedTx.kode_transaksi}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Customer</span>
+                      <span className="font-bold text-slate-900">{selectedTx.nama_customer}</span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-500">
+                      WhatsApp: +{selectedTx.whatsapp || "-"}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p>Tgl Sewa: <b>{formatDateIndo(selectedTx.tanggal_sewa)}</b></p>
-                    <p>Tgl Kembali: <b>{formatDateIndo(selectedTx.tanggal_kembali)}</b></p>
-                    <p>Status Sewa: <b>{selectedTx.status}</b></p>
+                  <div className="space-y-1 text-right">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Tgl Mulai Sewa</span>
+                      <span className="font-medium text-slate-900">{formatDateIndo(selectedTx.tanggal_sewa)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-medium">Tgl Wajib Kembali</span>
+                      <span className="font-bold text-slate-900">{formatDateIndo(selectedTx.tanggal_kembali)}</span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-500">
+                      Status: <span className="font-bold text-slate-900">{selectedTx.status}</span>
+                    </div>
                   </div>
                 </div>
 
+                {/* Items Table */}
                 <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                   <thead>
-                    <tr className="border-b-2 border-slate-300 text-slate-800 font-bold">
-                      <th className="py-2.5 px-1">Item / Varian</th>
-                      <th className="py-2.5 px-1 text-right">Qty</th>
-                      <th className="py-2.5 px-1 text-right">Harga Sewa</th>
-                      <th className="py-2.5 px-1 text-right">Total</th>
+                    <tr className="text-slate-500 font-bold border-y border-slate-200 text-[10px] uppercase">
+                      <th className="py-2 px-1">ITEM / VARIAN</th>
+                      <th className="py-2 px-1 text-center">QTY</th>
+                      <th className="py-2 px-1 text-right">HARGA</th>
+                      <th className="py-2 px-1 text-right">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {selectedTx.items?.map((item, i) => (
                       <tr key={i} className="align-top">
                         <td className="py-2 px-1">
-                          <b>{item.namaJas}</b>
-                          <p className="text-[10px] text-slate-500">{item.warna || "-"} / {item.ukuran || "-"}</p>
+                          <b className="text-slate-900">{item.namaJas}</b>
+                          <p className="text-[10px] text-slate-500">{item.warna || "-"} • Ukuran ${item.ukuran || "-"}</p>
                         </td>
-                        <td className="py-2 px-1 text-right font-mono">{item.jumlah}</td>
-                        <td className="py-2 px-1 text-right font-mono">{formatRupiah(item.harga)}</td>
-                        <td className="py-2 px-1 text-right font-mono font-bold">{formatRupiah(item.harga * item.jumlah)}</td>
+                        <td className="py-2 px-1 text-center">{item.jumlah}</td>
+                        <td className="py-2 px-1 text-right">{formatRupiah(item.harga)}</td>
+                        <td className="py-2 px-1 text-right font-bold text-slate-900">{formatRupiah(item.harga * item.jumlah)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                <div className="space-y-1.5 text-slate-700 leading-relaxed border-t border-slate-200 pt-3 text-[11px] sm:text-xs">
+                {/* Financial Summary */}
+                <div className="space-y-1.5 text-slate-700 leading-relaxed border-t border-slate-200 pt-2 text-[11px] sm:text-xs">
                   <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span className="font-mono font-medium">{formatRupiah(selectedTx.subtotal)}</span>
+                    <span className="text-slate-500">Subtotal Sewa:</span>
+                    <span className="font-medium text-slate-900">{formatRupiah(selectedTx.subtotal)}</span>
                   </div>
                   {selectedTx.deposit > 0 && (
                     <div className="flex justify-between">
-                      <span>Deposit Jaminan:</span>
-                      <span className="font-mono">{formatRupiah(selectedTx.deposit)}</span>
+                      <span className="text-slate-500">Deposit Jaminan:</span>
+                      <span>{formatRupiah(selectedTx.deposit)}</span>
                     </div>
                   )}
                   {selectedTx.potongan > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Potongan / Diskon:</span>
-                      <span className="font-mono font-medium">-{formatRupiah(selectedTx.potongan)}</span>
+                    <div className="flex justify-between text-emerald-600 font-medium">
+                      <span>Potongan Diskon:</span>
+                      <span>-{formatRupiah(selectedTx.potongan)}</span>
                     </div>
                   )}
                   {selectedTx.denda > 0 && (
-                    <div className="flex justify-between text-rose-600">
+                    <div className="flex justify-between text-rose-600 font-medium">
                       <span>Denda Keterlambatan:</span>
-                      <span className="font-mono font-medium">+{formatRupiah(selectedTx.denda)}</span>
+                      <span>+{formatRupiah(selectedTx.denda)}</span>
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-xs sm:text-sm font-bold text-slate-900 border-y border-slate-200 py-1.5 my-1">
-                    <span>TOTAL BAYAR:</span>
-                    <span className="font-mono text-emerald-600">{formatRupiah(selectedTx.total_bayar)}</span>
+                  {/* Total Banner */}
+                  <div className="flex justify-between items-center text-xs sm:text-sm font-bold text-white bg-slate-900 px-3 py-2 rounded-lg my-1.5 shadow-xs">
+                    <span>TOTAL PEMBAYARAN:</span>
+                    <span className="text-emerald-400 text-sm sm:text-base">{formatRupiah(selectedTx.total_bayar)}</span>
                   </div>
 
                   <div className="flex justify-between">
-                    <span>Sudah Dibayar:</span>
-                    <span className="font-mono font-bold">{formatRupiah(selectedTx.jumlah_dibayar || 0)}</span>
+                    <span className="text-slate-500">Sudah Dibayar:</span>
+                    <span className="font-bold text-slate-900">{formatRupiah(selectedTx.jumlah_dibayar || 0)}</span>
                   </div>
 
                   {selectedTx.sisa_pembayaran > 0 ? (
                     <div className="flex justify-between text-rose-600 font-bold">
                       <span>Sisa Pembayaran:</span>
-                      <span className="font-mono">{formatRupiah(selectedTx.sisa_pembayaran)}</span>
+                      <span>{formatRupiah(selectedTx.sisa_pembayaran)}</span>
                     </div>
                   ) : (
-                    <div className="flex justify-between items-center text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md mt-1">
-                      <span>Status Pembayaran:</span>
-                      <span>LUNAS ✓</span>
+                    <div className="text-center text-[10.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 py-1 rounded-md mt-1">
+                      ✓ STATUS: PEMBAYARAN SUDAH LUNAS
                     </div>
                   )}
 
                   {selectedTx.catatan && (
-                    <p className="text-[11px] text-slate-500 pt-1">
+                    <p className="text-[10px] text-slate-500 pt-1 italic">
                       <b>Catatan:</b> {selectedTx.catatan}
                     </p>
                   )}
                 </div>
 
-                <div className="text-center pt-3 border-t border-dashed border-slate-200 text-[10px] text-slate-500">
-                  Terima kasih sudah menyewa di Stitch and Moral. Simpan struk ini sebagai bukti transaksi.
+                {/* Syarat & Ketentuan Section */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[10px] text-slate-600 space-y-1 leading-relaxed">
+                  <div className="font-bold text-slate-900 text-[10px] uppercase tracking-wider mb-0.5">
+                    SYARAT & KETENTUAN SEWA:
+                  </div>
+                  <div>1. Wajib menitipkan kartu identitas asli (KTP/SIM) selama masa sewa.</div>
+                  <div>2. Sistem sewa H-1 ambil & H+1 kembali. Keterlambatan dikenakan denda harian.</div>
+                  <div>3. Dilarang mencuci / menyetrika jas sendiri (laundry ditangani toko).</div>
+                  <div>4. Kerusakan / kehilangan jas & aksesoris dikenakan biaya penggantian.</div>
+                  <div>5. Harap cek kondisi jas saat serah terima & simpan struk ini.</div>
+                </div>
+
+                {/* Store Footer */}
+                <div className="text-center pt-2 border-t border-slate-200 text-[9.5px] text-slate-500 leading-tight">
+                  <p>Stitch & Moral • WA: 081549193834 • Jl. Pangeran Samudera Induk No. 11, Palangka Raya</p>
                 </div>
               </div>
             </div>

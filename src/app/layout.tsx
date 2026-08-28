@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next";
+import { Roboto } from "next/font/google";
 import { Sidebar, BottomNav, MobileHeader } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeStyleProvider } from "@/components/ThemeStyleProvider";
 import { ThemeSettingsModal } from "@/components/ThemeSettingsModal";
 import { PWAInstaller } from "@/components/PWAInstaller";
 import "./globals.css";
+
+const roboto = Roboto({
+  weight: ["300", "400", "500", "700", "900"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto",
+});
 
 export const metadata: Metadata = {
   title: "Stitch & Moral - Manajemen Sewa Jas",
@@ -47,8 +55,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
-      <body className="antialiased bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 min-h-screen">
+    <html lang="id" suppressHydrationWarning className={roboto.variable}>
+      <body className={`${roboto.className} antialiased bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 min-h-screen`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
