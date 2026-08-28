@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TransaksiClient } from "./TransaksiClient";
 import type { Transaksi, Inventori, Customer } from "@/types/database";
 
-export const revalidate = 0;
+export const revalidate = 15;
 
 export default async function TransaksiPage() {
   const supabase = await createClient();

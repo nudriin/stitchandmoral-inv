@@ -18,7 +18,7 @@ import {
 import type { Transaksi, ModalItem, Inventori, Pengeluaran, Customer } from "@/types/database";
 import { PrintReportButton } from "./PrintReportButton";
 
-export const revalidate = 0;
+export const revalidate = 15;
 
 export default async function LaporanPage() {
   const supabase = await createClient();

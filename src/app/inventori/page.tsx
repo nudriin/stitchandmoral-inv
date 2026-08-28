@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { InventoriClient } from "./InventoriClient";
 import type { Inventori } from "@/types/database";
 
-export const revalidate = 0;
+export const revalidate = 15;
 
 export default async function InventoriPage() {
   const supabase = await createClient();

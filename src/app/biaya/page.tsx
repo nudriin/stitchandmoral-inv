@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BiayaClient } from "./BiayaClient";
 import type { Pengeluaran, ModalItem } from "@/types/database";
 
-export const revalidate = 0;
+export const revalidate = 15;
 
 export default async function BiayaPage() {
   const supabase = await createClient();

@@ -62,6 +62,7 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
                     ? "bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow-sm"
@@ -163,6 +164,7 @@ export function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition active:scale-95 ${
               isActive
                 ? "text-slate-950 dark:text-zinc-50 font-bold"

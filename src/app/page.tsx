@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { Inventori, Transaksi, Customer } from "@/types/database";
 
-export const revalidate = 0; // Dynamic data
+export const revalidate = 15; // Enable Stale-While-Revalidate Caching for instant navigation
 
 export default async function DashboardPage() {
   const supabase = await createClient();
