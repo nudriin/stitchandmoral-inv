@@ -92,3 +92,62 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// Push Notification Event
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'Stitch & Moral',
+    body: 'Pemberitahuan baru dari Stitch & Moral',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    url: '/transaksi',
+  };
+
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icons/icon-192x192.png',
+    badge: data.badge || '/icons/icon-192x192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/transaksi',
+      dateOfArrival: Date.now(),
+    },
+    actions: [
+      { action: 'open', title: 'Lihat Daftar Jas' },
+      { action: 'close', title: 'Tutup' }
+    ]
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+// Notification Click Event
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'close') return;
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/transaksi';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

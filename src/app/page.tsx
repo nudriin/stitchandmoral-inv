@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Inventori, Transaksi, Customer } from "@/types/database";
+import { NotificationManager } from "@/components/NotificationManager";
 
 export const revalidate = 15; // Enable Stale-While-Revalidate Caching for instant navigation
 
@@ -160,6 +161,9 @@ export default async function DashboardPage() {
           <span className="text-xs text-slate-500 dark:text-zinc-400 mt-1 block">Pelanggan terdaftar</span>
         </div>
       </div>
+
+      {/* Push Notification Manager & 12:00 PM System Alert */}
+      <NotificationManager />
 
       {/* Notifications & Reminders */}
       <div className="grid md:grid-cols-2 gap-4">
