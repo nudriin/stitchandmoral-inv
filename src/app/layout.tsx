@@ -49,10 +49,31 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="application-name" content="Stitch & Moral" />
         <meta name="format-detection" content="telephone=no" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (("standalone" in window.navigator) && window.navigator.standalone) {
+                var noddy, remotes = false;
+                document.addEventListener('click', function(event) {
+                  noddy = event.target;
+                  while(noddy && noddy.nodeName !== "A" && noddy.nodeName !== "HTML") {
+                    noddy = noddy.parentNode;
+                  }
+                  if(noddy && noddy.nodeName === "A" && "href" in noddy && noddy.href.indexOf("http") !== -1 && (noddy.href.indexOf(document.location.host) !== -1 || remotes)) {
+                    event.preventDefault();
+                    document.location.href = noddy.href;
+                  }
+                }, false);
+              }
+            `,
+          }}
+        />
       </head>
       <body className="antialiased bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 min-h-screen">
         <ThemeProvider
