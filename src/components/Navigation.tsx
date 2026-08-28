@@ -117,7 +117,7 @@ export function MobileHeader() {
   if (pathname === "/login") return null;
 
   return (
-    <header className="md:hidden sticky top-0 z-40 bg-white/90 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-zinc-800/80 px-4 py-3 flex items-center justify-between transition-colors shadow-xs">
+    <header className="md:hidden sticky top-0 z-40 bg-white/90 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-zinc-800/80 px-4 pt-[max(0.75rem,calc(env(safe-area-inset-top)+0.35rem))] pb-3 flex items-center justify-between transition-colors shadow-xs">
       <div className="flex items-center gap-2">
         <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 font-bold shadow-xs">
           <Sparkles className="w-3.5 h-3.5" />
