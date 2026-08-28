@@ -1,0 +1,2139 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Manajemen Sewa Jas</title>
+
+    <!-- PWA Meta Tags for iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sewa Jas">
+    <meta name="theme-color" content="#09090b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/?size=180&id=81235&format=png&color=000000">
+
+    <!-- Dynamic PWA Manifest -->
+    <script>
+        (function () {
+            const WEB_APP_URL = "<?= webAppUrl ?>";
+            const manifestData = {
+                "name": "Manajemen Sewa Jas Premium",
+                "short_name": "Sewa Jas",
+                "description": "Sistem Manajemen Sewa Jas Premium",
+                "start_url": WEB_APP_URL,
+                "display": "standalone",
+                "orientation": "portrait",
+                "background_color": "#ffffff",
+                "theme_color": "#09090b",
+                "icons": [
+                    {
+                        "src": "https://img.icons8.com/?size=192&id=81235&format=png&color=000000",
+                        "sizes": "192x192",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    },
+                    {
+                        "src": "https://img.icons8.com/?size=512&id=81235&format=png&color=000000",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "any maskable"
+                    }
+                ]
+            };
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            // Use Data URL instead of Blob for better stability on some devices
+            const manifestStr = JSON.stringify(manifestData);
+            link.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(manifestStr);
+            document.head.appendChild(link);
+
+            // Fix for iOS standalone mode navigation
+            if (("standalone" in window.navigator) && window.navigator.standalone) {
+                document.addEventListener('click', function (e) {
+                    let target = e.target;
+                    while (target && target.nodeName !== 'A') {
+                        target = target.parentNode;
+                    }
+                    if (target && target.href && !target.hasAttribute('target')) {
+                        e.preventDefault();
+                        window.location.href = target.href;
+                    }
+                }, false);
+            }
+        })();
+    </script>
+    <style>
+        :root {
+            --background: #fafafa;
+            --foreground: #09090b;
+            --card: #ffffff;
+            --muted: #71717a;
+            --muted-bg: #f4f4f5;
+            --border: #e4e4e7;
+            --primary: #09090b;
+            --primary-hover: #27272a;
+            --danger: #dc2626;
+            --warning: #a16207;
+            --success: #15803d;
+            --ring: rgba(24, 24, 27, .16);
+            --shadow: 0 1px 2px rgba(0, 0, 0, .06);
+            --radius: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            font-size: 14px;
+        }
+
+        button,
+        input,
+        select,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            border: 1px solid var(--primary);
+            cursor: pointer;
+            border-radius: var(--radius);
+            padding: 9px 12px;
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            line-height: 1.1;
+            box-shadow: var(--shadow);
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: .58;
+        }
+
+        button.secondary {
+            background: var(--card);
+            color: var(--foreground);
+            border-color: var(--border);
+        }
+
+        button.secondary:hover {
+            background: var(--muted-bg);
+        }
+
+        button.danger {
+            background: var(--danger);
+            border-color: var(--danger);
+        }
+
+        button.ghost {
+            background: transparent;
+            color: var(--foreground);
+            border-color: transparent;
+            box-shadow: none;
+            padding: 6px 8px;
+        }
+
+        button.ghost:hover {
+            background: var(--muted-bg);
+        }
+
+        button.btn-edit {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: white;
+        }
+        button.btn-edit:hover { background: #1d4ed8; }
+
+        button.btn-delete {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: white;
+        }
+        button.btn-delete:hover { background: #b91c1c; }
+
+        button.btn-success {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        button.btn-success:hover { background: #166534; }
+
+        button.btn-warning {
+            background: #d97706;
+            border-color: #d97706;
+            color: white;
+        }
+        button.btn-warning:hover { background: #b45309; }
+
+        button.btn-info {
+            background: #0891b2;
+            border-color: #0891b2;
+            color: white;
+        }
+        button.btn-info:hover { background: #0e7490; }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 9px 10px;
+            background: var(--card);
+            color: var(--foreground);
+            min-width: 0;
+            outline: none;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--foreground);
+            box-shadow: 0 0 0 3px var(--ring);
+        }
+
+        textarea {
+            min-height: 82px;
+            resize: vertical;
+        }
+
+        label {
+            display: grid;
+            gap: 6px;
+            color: var(--foreground);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 11px 10px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--card);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        a {
+            color: var(--foreground);
+            font-weight: 600;
+        }
+
+        .app {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 248px 1fr;
+        }
+
+        .side {
+            background: var(--card);
+            color: var(--foreground);
+            padding: 20px 16px;
+            border-right: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .brand {
+            font-size: 17px;
+            font-weight: 750;
+            margin-bottom: 18px;
+            letter-spacing: 0;
+        }
+
+        .nav {
+            display: grid;
+            gap: 6px;
+        }
+
+        .nav button {
+            width: 100%;
+            min-height: 38px;
+            text-align: left;
+            background: transparent;
+            color: var(--muted);
+            border-color: transparent;
+            box-shadow: none;
+            font-weight: 600;
+        }
+
+        .nav button.active,
+        .nav button:hover {
+            background: var(--muted-bg);
+            color: var(--foreground);
+            border-color: var(--border);
+        }
+
+        .main {
+            padding: 22px;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 24px;
+            line-height: 1.15;
+            letter-spacing: 0;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            min-width: 0;
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 15px;
+            letter-spacing: 0;
+        }
+
+        .panel-body {
+            padding: 16px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .grid.cards {
+            grid-template-columns: repeat(5, minmax(140px, 1fr));
+        }
+
+        .grid.two {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid.three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px;
+            box-shadow: var(--shadow);
+            min-width: 0;
+        }
+
+        .metric .label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .metric .value {
+            font-size: 24px;
+            font-weight: 780;
+            margin-top: 7px;
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .toolbar input {
+            max-width: 280px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .form-grid .wide {
+            grid-column: 1 / -1;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: grid;
+            gap: 16px;
+        }
+
+        .table-wrap {
+            max-height: 520px;
+            overflow: auto;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 650;
+            background: var(--muted-bg);
+            color: var(--foreground);
+            border: 1px solid var(--border);
+        }
+
+        .badge.ok {
+            color: var(--success);
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .badge.warn {
+            color: var(--warning);
+            background: #fefce8;
+            border-color: #fde68a;
+        }
+
+        .badge.danger {
+            color: var(--danger);
+            background: #fef2f2;
+            border-color: #fecaca;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            place-items: center;
+            background: rgba(9, 9, 11, .54);
+            padding: 18px;
+            z-index: 60;
+        }
+
+        .modal.open {
+            display: grid;
+        }
+
+        .dialog {
+            width: min(980px, 100%);
+            max-height: 92vh;
+            overflow: auto;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, .24);
+            border: 1px solid var(--border);
+        }
+
+        .dialog-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 15px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dialog-head h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .dialog-body {
+            padding: 18px;
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 90px 130px 42px;
+            gap: 8px;
+            align-items: end;
+            margin-bottom: 8px;
+        }
+
+        .chart {
+            display: grid;
+            gap: 10px;
+        }
+
+        .bar {
+            display: grid;
+            grid-template-columns: 100px 1fr 90px;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        .bar span:nth-child(2) {
+            height: 9px;
+            background: var(--muted-bg);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .bar i {
+            display: block;
+            height: 100%;
+            background: var(--primary);
+        }
+
+        .thumb {
+            width: 42px;
+            height: 42px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .toast {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            background: var(--primary);
+            color: white;
+            padding: 12px 14px;
+            border-radius: var(--radius);
+            display: none;
+            z-index: 40;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, .2);
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .global-loader {
+            position: fixed;
+            inset: 0 0 auto 0;
+            height: 3px;
+            background: transparent;
+            z-index: 50;
+            overflow: hidden;
+            display: none;
+        }
+
+        .global-loader.show {
+            display: block;
+        }
+
+        .global-loader::before {
+            content: "";
+            display: block;
+            width: 42%;
+            height: 100%;
+            background: var(--primary);
+            border-radius: 999px;
+            animation: loading-slide 1s infinite ease-in-out;
+        }
+
+        body.loading button,
+        body.loading input[type="file"] {
+            pointer-events: none;
+        }
+
+        body.loading button {
+            opacity: .65;
+        }
+
+        @keyframes loading-slide {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            50% {
+                transform: translateX(140%);
+            }
+
+            100% {
+                transform: translateX(260%);
+            }
+        }
+
+        .status-box {
+            display: none;
+            margin: 0 0 14px;
+            padding: 11px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--card);
+            color: var(--foreground);
+            font-size: 13px;
+            box-shadow: var(--shadow);
+        }
+
+        .status-box.show {
+            display: block;
+        }
+
+        .status-box.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .status-box a {
+            color: inherit;
+            font-weight: 750;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .upload-preview {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .upload-preview.show {
+            display: flex;
+        }
+
+        .upload-preview img {
+            width: 56px;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 7px;
+            border: 1px solid var(--border);
+        }
+
+        .field-note {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .bottom-nav {
+            display: none;
+        }
+
+        body.modal-open .bottom-nav {
+            display: none !important;
+        }
+
+        @media (max-width: 1020px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .side {
+                position: static;
+                height: auto;
+                min-height: 0;
+                padding: 14px 18px;
+                border-right: 0;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .side .brand {
+                margin-bottom: 12px;
+                font-size: 18px;
+            }
+
+            .nav {
+                grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+                gap: 8px;
+            }
+
+            .nav button {
+                min-height: 38px;
+                padding: 9px 10px;
+                font-size: 13px;
+                text-align: center;
+            }
+
+            .main {
+                padding: 18px;
+            }
+
+            .topbar h1 {
+                font-size: 22px;
+            }
+
+            .grid.cards {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .grid.two,
+            .grid.three {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .dialog {
+                width: min(94vw, 920px);
+            }
+        }
+
+        @media (max-width: 820px) {
+            .table-wrap {
+                max-height: none;
+                overflow: visible;
+            }
+
+            .table-wrap table,
+            .table-wrap thead,
+            .table-wrap tbody,
+            .table-wrap tr,
+            .table-wrap td {
+                display: block;
+                width: 100%;
+            }
+
+            .table-wrap thead {
+                display: none;
+            }
+
+            .table-wrap tr {
+                margin: 12px 0;
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--card);
+                box-shadow: var(--shadow);
+            }
+
+            .table-wrap td {
+                border: 0;
+                padding: 8px 0;
+                font-size: 13px;
+            }
+
+            .table-wrap td::before {
+                content: attr(data-label);
+                display: block;
+                color: var(--muted);
+                font-size: 11px;
+                font-weight: 750;
+                margin-bottom: 3px;
+            }
+
+            .table-wrap td.actions {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .table-wrap td.actions::before {
+                flex-basis: 100%;
+            }
+
+            .table-wrap td.actions button {
+                flex: 1 1 120px;
+                min-height: 38px;
+                background: var(--card);
+                border-color: var(--border);
+                color: var(--foreground);
+            }
+        }
+
+        @media (max-width: 620px) {
+            body {
+                background: var(--background);
+            }
+
+            .app {
+                display: block;
+                min-height: 100vh;
+            }
+
+            .side {
+                padding: 14px 14px 10px;
+            }
+
+            .side .brand {
+                margin-bottom: 0;
+                font-size: 17px;
+            }
+
+            .side .nav {
+                display: none;
+            }
+
+            .main {
+                padding: 14px 14px calc(86px + env(safe-area-inset-bottom));
+                overflow: visible;
+            }
+
+            .topbar {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .topbar h1 {
+                font-size: 22px;
+            }
+
+            .topbar .muted {
+                font-size: 12px;
+                line-height: 1.4;
+            }
+
+            .toolbar {
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .toolbar input {
+                max-width: none;
+                width: 100%;
+                grid-column: 1 / -1;
+            }
+
+            .toolbar button {
+                width: 100%;
+                min-height: 42px;
+                padding-inline: 10px;
+                font-size: 13px;
+            }
+
+            .grid,
+            .grid.cards,
+            .grid.two,
+            .grid.three,
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .section.active {
+                gap: 12px;
+            }
+
+            .panel-head {
+                align-items: stretch;
+                flex-direction: column;
+                padding: 12px;
+            }
+
+            .panel-head h2 {
+                font-size: 15px;
+            }
+
+            .panel-body {
+                padding: 12px;
+            }
+
+            .card {
+                padding: 12px;
+            }
+
+            .metric .value {
+                font-size: 22px;
+            }
+
+            .bar {
+                grid-template-columns: 78px 1fr;
+            }
+
+            .bar em {
+                grid-column: 2;
+            }
+
+            .item-row {
+                grid-template-columns: 1fr;
+            }
+
+            input,
+            select,
+            textarea {
+                min-height: 42px;
+                font-size: 14px;
+            }
+
+            .dialog {
+                width: 100%;
+                height: 100%;
+                max-height: none;
+                border-radius: 0;
+            }
+
+            .dialog-head {
+                position: sticky;
+                top: 0;
+                background: var(--card);
+                z-index: 2;
+                padding: 12px 14px;
+            }
+
+            .dialog-body {
+                padding: 14px;
+            }
+
+            .modal.open .dialog-body {
+                padding-bottom: calc(28px + env(safe-area-inset-bottom));
+            }
+
+            .toast {
+                left: 14px;
+                right: 14px;
+                bottom: calc(76px + env(safe-area-inset-bottom));
+            }
+
+            .bottom-nav {
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                bottom: calc(10px + env(safe-area-inset-bottom));
+                z-index: 30;
+                display: grid;
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+                gap: 4px;
+                padding: 6px;
+                background: rgba(255, 255, 255, .96);
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                box-shadow: 0 16px 42px rgba(0, 0, 0, .16);
+                backdrop-filter: blur(14px);
+            }
+
+            .bottom-nav button {
+                min-width: 0;
+                min-height: 50px;
+                padding: 6px 3px;
+                border: 0;
+                background: transparent;
+                color: var(--muted);
+                box-shadow: none;
+                font-size: 10px;
+                font-weight: 650;
+                text-align: center;
+                display: grid;
+                place-items: center;
+                gap: 3px;
+            }
+
+            .bottom-nav .nav-icon {
+                display: grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+            }
+
+            .bottom-nav svg {
+                width: 19px;
+                height: 19px;
+                stroke-width: 2;
+            }
+
+            .bottom-nav .nav-label {
+                display: block;
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                line-height: 1;
+            }
+
+            .bottom-nav button.active {
+                background: var(--primary);
+                color: white;
+                border-radius: 12px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .main {
+                padding: 10px 10px calc(92px + env(safe-area-inset-bottom));
+            }
+
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .bottom-nav {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .bottom-nav button {
+                min-height: 44px;
+            }
+
+            .bottom-nav svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+
+        /* Transaction card view */
+        .tx-cards {
+            display: grid;
+            gap: 10px;
+            padding: 14px;
+        }
+
+        .tx-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            background: var(--card);
+            box-shadow: var(--shadow);
+        }
+
+        .tx-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .tx-card-code {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .tx-card-customer {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .tx-card-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .tx-item-chip {
+            background: var(--muted-bg);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 2px 9px;
+            font-size: 12px;
+        }
+
+        .tx-card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .tx-card-meta b {
+            color: var(--foreground);
+        }
+
+        .tx-card-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tx-card-actions button {
+            flex: 1 1 auto;
+            min-height: 34px;
+            font-size: 12px;
+            padding: 5px 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="global-loader" id="globalLoader"></div>
+    <div class="app">
+        <aside class="side">
+            <div class="brand">Sewa Jas Manager</div>
+            <div class="nav" id="nav"></div>
+        </aside>
+        <main class="main">
+            <div class="topbar">
+                <div>
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <div class="muted">Sistem pencatatan sewa, stok, struk, dan laporan</div>
+                </div>
+                <div class="toolbar">
+                    <button class="secondary" onclick="showInstallGuide()">Install App</button>
+                    <button class="secondary" onclick="refresh()">Refresh</button>
+                    <button id="setupButton" onclick="runSetup()">Setup Sheet</button>
+                    <button class="secondary" onclick="runDiagnose()">Diagnosa</button>
+                </div>
+            </div>
+            <div id="setupStatus" class="status-box"></div>
+
+            <section id="dashboard" class="section active"></section>
+            <section id="inventory" class="section"></section>
+            <section id="customers" class="section"></section>
+            <section id="transactions" class="section"></section>
+            <section id="reports" class="section"></section>
+            <section id="expenses" class="section"></section>
+        </main>
+    </div>
+
+    <nav class="bottom-nav" id="bottomNav"></nav>
+
+    <div class="modal" id="modal">
+        <div class="dialog">
+            <div class="dialog-head">
+                <h3 id="modalTitle"></h3>
+                <button class="secondary" onclick="closeModal()">Tutup</button>
+            </div>
+            <div class="dialog-body" id="modalBody"></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function number_(value) {
+            const parsed = Number(value || 0);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        const state = { data: null, route: 'dashboard', search: '', expenseTab: 'operasional', txView: 'card' };
+        const routes = [
+            ['dashboard', 'Dashboard'],
+            ['inventory', 'Inventori'],
+            ['customers', 'Customer'],
+            ['transactions', 'Transaksi'],
+            ['reports', 'Laporan'],
+            ['expenses', 'Biaya']
+        ];
+        let pendingRequests = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderNav();
+            showSetupStatus('Memuat data aplikasi...');
+            refresh();
+        });
+
+        function call(name, ...args) {
+            setBusy(true);
+            return new Promise((resolve, reject) => {
+                if (!window.google || !google.script || !google.script.run) {
+                    setBusy(false);
+                    reject(new Error('Aplikasi harus dibuka dari URL Web App Google Apps Script, bukan preview/file lokal.'));
+                    return;
+                }
+                google.script.run
+                    .withSuccessHandler(result => { setBusy(false); resolve(result); })
+                    .withFailureHandler(error => { setBusy(false); toast(error.message || error, true); reject(error); })
+                [name](...args);
+            });
+        }
+
+        function setBusy(isBusy) {
+            pendingRequests = Math.max(0, pendingRequests + (isBusy ? 1 : -1));
+            const active = pendingRequests > 0;
+            document.body.style.cursor = active ? 'progress' : 'default';
+            document.body.classList.toggle('loading', active);
+            document.getElementById('globalLoader').classList.toggle('show', active);
+        }
+
+        async function refresh() {
+            showSetupStatus('Mengambil data dari Google Sheet...');
+            try {
+                state.data = await call('getAppData');
+                const databaseUrl = state.data && state.data.app && state.data.app.databaseUrl;
+                showSetupStatus(`Data berhasil dimuat.${databaseUrl ? ` <a href="${databaseUrl}" target="_blank">Buka database Sheet</a>` : ''}`);
+                render();
+            } catch (error) {
+                const message = error.message || 'Refresh gagal. Cek permission dan deployment Apps Script.';
+                showSetupStatus(message, true);
+                toast(message, true);
+            }
+        }
+
+        async function runSetup() {
+            const button = document.getElementById('setupButton');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Menyiapkan...';
+            showSetupStatus('Setup sedang berjalan. Jika ini pertama kali, pastikan izin akses Spreadsheet/Drive sudah disetujui.');
+            try {
+                state.data = await call('setupApp');
+                const databaseUrl = state.data && state.data.app && state.data.app.databaseUrl;
+                showSetupStatus(`Setup selesai. Database siap dipakai.${databaseUrl ? ` <a href="${databaseUrl}" target="_blank">Buka database Sheet</a>` : ''}`);
+                toast('Setup selesai. Sheet dan contoh data siap dipakai.');
+                render();
+            } catch (error) {
+                const message = error.message || 'Setup gagal. Cek izin Apps Script dan deployment.';
+                showSetupStatus(message, true);
+                toast(message, true);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        async function runDiagnose() {
+            showSetupStatus('Menjalankan diagnosa...');
+            try {
+                const result = await call('diagnoseApp');
+                showSetupStatus(`
+          Diagnosa berhasil.<br>
+          Database: <b>${esc(result.databaseName)}</b><br>
+          Sheet: ${result.sheets.map(esc).join(', ')}<br>
+          Inventori: ${result.inventoryRows} baris, Customer: ${result.customerRows} baris, Transaksi: ${result.transactionRows} baris<br>
+          <a href="${result.databaseUrl}" target="_blank">Buka database Sheet</a>
+        `);
+            } catch (error) {
+                const message = error.message || 'Diagnosa gagal.';
+                showSetupStatus(message, true);
+                toast(message, true);
+            }
+        }
+
+        function renderNav() {
+            const sideHtml = routes.map(([id, label]) =>
+                `<button class="${state.route === id ? 'active' : ''}" onclick="go('${id}')">${label}</button>`
+            ).join('');
+            const bottomHtml = routes.map(([id, label]) =>
+                `<button class="${state.route === id ? 'active' : ''}" onclick="go('${id}')" aria-label="${esc(label)}">
+          <span class="nav-icon">${iconSvg(id)}</span>
+          <span class="nav-label">${label}</span>
+        </button>`
+            ).join('');
+            document.getElementById('nav').innerHTML = sideHtml;
+            document.getElementById('bottomNav').innerHTML = bottomHtml;
+        }
+
+        function iconSvg(id) {
+            const attrs = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+            const icons = {
+                dashboard: `<svg ${attrs}><rect width="7" height="9" x="3" y="3" rx="1.5"></rect><rect width="7" height="5" x="14" y="3" rx="1.5"></rect><rect width="7" height="9" x="14" y="12" rx="1.5"></rect><rect width="7" height="5" x="3" y="16" rx="1.5"></rect></svg>`,
+                inventory: `<svg ${attrs}><path d="m21 8-9-5-9 5 9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path><path d="m7.5 5.5 9 5"></path></svg>`,
+                customers: `<svg ${attrs}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+                transactions: `<svg ${attrs}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"></path><path d="M8 7h8"></path><path d="M8 12h8"></path><path d="M8 17h5"></path></svg>`,
+                reports: `<svg ${attrs}><path d="M3 3v18h18"></path><path d="M7 16v-5"></path><path d="M12 16V7"></path><path d="M17 16v-3"></path></svg>`,
+                expenses: `<svg ${attrs}><rect width="20" height="14" x="2" y="5" rx="2"></rect><path d="M2 10h20"></path><path d="M7 15h.01"></path><path d="M11 15h2"></path></svg>`
+            };
+            return icons[id] || icons.dashboard;
+        }
+
+        function go(route) {
+            state.route = route;
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.getElementById(route).classList.add('active');
+            document.getElementById('pageTitle').textContent = routes.find(r => r[0] === route)[1];
+            renderNav();
+            render();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function render() {
+            if (!state.data) return;
+            renderDashboard();
+            renderInventory();
+            renderCustomers();
+            renderTransactions();
+            renderReports();
+            renderExpenses();
+        }
+
+        function renderDashboard() {
+            const d = state.data.dashboard;
+            document.getElementById('dashboard').innerHTML = `
+        <div class="grid cards">
+          ${metric('Item Tersedia', d.totalTersedia)}
+          ${metric('Sedang Disewa', d.totalDisewa)}
+          ${metric('Transaksi Bulan Ini', d.transaksiBulanIni)}
+          ${metric('Pendapatan Bulan Ini', money(d.pendapatanBulanIni))}
+          ${metric('Customer Aktif', d.customerAktif)}
+        </div>
+        <div class="grid two">
+          <div class="panel"><div class="panel-head"><h2>Pengembalian Hari Ini</h2></div><div class="panel-body">${renderReminder(d.dueToday, 'Tidak ada pengembalian hari ini.')}</div></div>
+          <div class="panel"><div class="panel-head"><h2>Keterlambatan</h2></div><div class="panel-body">${renderReminder(d.overdue, 'Tidak ada transaksi terlambat.')}</div></div>
+        </div>
+        <div class="grid three">
+          ${miniRank('Item Terlaris', d.topJas)}
+          ${miniRank('Warna Favorit', d.topWarna)}
+          ${miniRank('Ukuran Favorit', d.topUkuran)}
+        </div>
+        <div class="grid two">
+          <div class="panel"><div class="panel-head"><h2>Pendapatan Bulanan</h2></div><div class="panel-body">${barChart(d.revenueChart)}</div></div>
+          <div class="panel"><div class="panel-head"><h2>Repeat Customer</h2></div><div class="panel-body">${listPairs(d.repeatCustomers, 'Belum ada repeat customer.')}</div></div>
+        </div>`;
+        }
+
+        function renderInventory() {
+            const items = state.data.inventory.filter(i => searchHit(i));
+            const focusId = document.activeElement ? document.activeElement.id : null;
+            document.getElementById('inventory').innerHTML = `
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Inventori Barang</h2>
+            <div class="toolbar">
+              <input id="searchInv" placeholder="Cari barang, warna, ukuran..." value="${esc(state.search)}" oninput="state.search=this.value;renderInventory()">
+              <button onclick="openInventoryForm()">Tambah Barang</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Foto</th><th>Kode</th><th>Nama</th><th>Kategori</th><th>Warna</th><th>Ukuran</th><th>Harga</th><th>Stok</th><th>Kondisi</th><th>Aksi</th></tr></thead>
+              <tbody>${items.map(i => `
+                <tr>
+                  <td data-label="Foto">${i.fotoUrl ? `<img class="thumb" src="${thumb(i.fotoUrl)}">` : '-'}</td>
+                  <td data-label="Kode">${esc(i.kodeJas)}</td>
+                  <td data-label="Nama">${esc(i.namaJas)}</td>
+                  <td data-label="Jenis">${esc(i.jenisJas)}</td>
+                  <td data-label="Warna">${esc(i.warna)}</td>
+                  <td data-label="Ukuran">${esc(i.ukuran)}</td>
+                  <td data-label="Harga">${money(i.hargaDefault)}</td>
+                  <td data-label="Stok">${i.stokTersedia}/${i.jumlahStok}<br><span class="muted">Disewa ${i.stokDisewa}</span></td>
+                  <td data-label="Kondisi">${badge(i.kondisi)}<br><span class="muted">${esc(i.statusLaundry || 'Ready')}</span></td>
+                  <td data-label="Aksi" class="actions"><button class="ghost btn-edit" onclick='openInventoryForm(${json(i)})'>Edit</button><button class="ghost btn-delete" onclick="deleteInv('${i.kodeJas}')">Hapus</button></td>
+                </tr>`).join('') || emptyRow(10)}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+            if (focusId === 'searchInv') {
+                const el = document.getElementById('searchInv');
+                if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+            }
+        }
+
+        function renderCustomers() {
+            const rows = state.data.customers.filter(c => searchHit(c));
+            const focusId = document.activeElement ? document.activeElement.id : null;
+            document.getElementById('customers').innerHTML = `
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Customer</h2>
+            <div class="toolbar"><input id="searchCus" placeholder="Cari customer..." value="${esc(state.search)}" oninput="state.search=this.value;renderCustomers()"><button onclick="openCustomerForm()">Tambah Customer</button></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Foto</th><th>Nama</th><th>WhatsApp</th><th>Alamat</th><th>Instagram</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody>${rows.map(c => `
+                <tr>
+                  <td data-label="Foto">${c.fotoCustomerUrl ? `<img class="thumb" src="${thumb(c.fotoCustomerUrl)}">` : '-'}</td>
+                  <td data-label="Nama">${esc(c.nama)}</td>
+                  <td data-label="WhatsApp">${waLink(c.whatsapp)}</td>
+                  <td data-label="Alamat">${esc(c.alamat)}</td>
+                  <td data-label="Instagram">${esc(c.instagram)}</td>
+                  <td data-label="Status">${badge(c.status)}</td>
+                  <td data-label="Aksi" class="actions"><button class="ghost btn-edit" onclick='openCustomerForm(${json(c)})'>Edit</button></td>
+                </tr>`).join('') || emptyRow(7)}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+            if (focusId === 'searchCus') {
+                const el = document.getElementById('searchCus');
+                if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+            }
+        }
+
+        function renderTransactions() {
+            const rows = state.data.transactions.filter(t => searchHit(t));
+            const focusId = document.activeElement ? document.activeElement.id : null;
+            const view = state.txView || 'card';
+            const toggleBtn = view === 'card'
+                ? `<button class="secondary" onclick="state.txView='list';renderTransactions()" title="Tampilan List">☰ List</button>`
+                : `<button class="secondary" onclick="state.txView='card';renderTransactions()" title="Tampilan Card">⊞ Card</button>`;
+
+            let bodyHtml;
+            if (view === 'list') {
+                bodyHtml = `<div class="table-wrap">
+            <table>
+              <thead><tr><th>Kode</th><th>Customer</th><th>Item</th><th>Tanggal</th><th>Total</th><th>Pembayaran</th><th>Status</th><th>Aksi</th></tr></thead>
+              <tbody>${rows.map(t => `
+                <tr>
+                  <td data-label="Kode">${esc(t.kodeTransaksi)}</td>
+                  <td data-label="Customer">${esc(t.namaCustomer)}<br>${waLink(t.whatsapp)}</td>
+                  <td data-label="Item">${t.items.map(i => `${esc(i.namaJas)} x${i.jumlah}`).join('<br>')}</td>
+                  <td data-label="Tanggal">${esc(t.tanggalSewa)}<br><span class="muted">Kembali ${esc(t.tanggalKembali)}</span></td>
+                  <td data-label="Total">
+                    ${money(t.totalBayar)}<br>
+                    <span class="muted">${number_(t.potongan) > 0 ? `Potongan ${money(t.potongan)}<br>` : ''}Denda ${money(t.denda)}</span>
+                  </td>
+                  <td data-label="Pembayaran">${paymentBadge(t)}</td>
+                  <td data-label="Status">${statusBadge(t.status)}</td>
+                  <td data-label="Aksi" class="actions">${txActions(t)}</td>
+                </tr>`).join('') || emptyRow(8)}
+              </tbody>
+            </table>
+          </div>`;
+            } else {
+                bodyHtml = `<div class="tx-cards">${rows.map(t => `
+            <div class="tx-card">
+              <div class="tx-card-head">
+                <div>
+                  <div class="tx-card-code">${esc(t.kodeTransaksi)}</div>
+                  <div class="tx-card-customer">${esc(t.namaCustomer)} ${waLink(t.whatsapp)}</div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${statusBadge(t.status)}${paymentBadge(t)}</div>
+              </div>
+              <div class="tx-card-items">${t.items.map(i => `<span class="tx-item-chip">${esc(i.namaJas)} <b>x${i.jumlah}</b></span>`).join('')}</div>
+              <div class="tx-card-meta">
+                <span>📅 ${esc(t.tanggalSewa)} → ${esc(t.tanggalKembali)}</span>
+                <span><b>${money(t.totalBayar)}</b>${number_(t.sisaPembayaran) > 0 ? ` · Sisa ${money(t.sisaPembayaran)}` : ''}</span>
+              </div>
+              <div class="tx-card-actions">${txActions(t)}</div>
+            </div>`).join('') || '<div class="muted" style="padding:16px">Belum ada transaksi.</div>'}
+          </div>`;
+            }
+
+            document.getElementById('transactions').innerHTML = `
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Transaksi Sewa</h2>
+            <div class="toolbar">
+              <input id="searchTx" placeholder="Cari transaksi..." value="${esc(state.search)}" oninput="state.search=this.value;renderTransactions()">
+              ${toggleBtn}
+              <button onclick="openTransactionForm()">Transaksi Baru</button>
+            </div>
+          </div>
+          ${bodyHtml}
+        </div>`;
+            if (focusId === 'searchTx') {
+                const el = document.getElementById('searchTx');
+                if (el) { el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+            }
+        }
+
+        function txActions(t) {
+            const parts = [];
+            parts.push(`<button class="ghost btn-info" onclick="printReceipt('${t.kodeTransaksi}')">Struk</button>`);
+            parts.push(`<button class="ghost btn-info" onclick="sendReceiptViaWA('${t.kodeTransaksi}')">WA</button>`);
+            if (['Booking', 'Sedang Disewa', 'Terlambat'].includes(t.status)) {
+                parts.push(`<button class="ghost btn-edit" onclick='openEditTransactionForm(${json(t)})'>Edit</button>`);
+            }
+            if (t.status === 'Booking') {
+                parts.push(`<button class="ghost btn-warning" onclick="doConfirmPickup('${t.kodeTransaksi}')">Konfirmasi Ambil</button>`);
+            }
+            if (['Sedang Disewa', 'Terlambat'].includes(t.status)) {
+                parts.push(`<button class="ghost btn-success" onclick="finishTx('${t.kodeTransaksi}')">Selesaikan</button>`);
+            }
+            if (!['Dibatalkan', 'Selesai'].includes(t.status)) {
+                parts.push(`<button class="ghost btn-warning" onclick="openPaymentModal('${t.kodeTransaksi}')">Bayar</button>`);
+                parts.push(`<button class="ghost btn-delete" onclick="cancelTx('${t.kodeTransaksi}')">Batalkan</button>`);
+            }
+            return parts.join('');
+        }
+
+        function paymentBadge(t) {
+            const sp = t.statusPembayaran || 'Belum Bayar';
+            const klass = sp === 'Lunas' ? 'ok' : sp === 'DP' ? 'warn' : 'danger';
+            const sisa = number_(t.sisaPembayaran) > 0 ? ` · sisa ${money(t.sisaPembayaran)}` : '';
+            return `<span class="badge ${klass}">${esc(sp)}${sisa}</span>`;
+        }
+
+        function openPaymentModal(kode) {
+            const tx = state.data.transactions.find(t => t.kodeTransaksi === kode);
+            if (!tx) return;
+            openModal('Update Pembayaran — ' + kode, `
+        <form id="payForm" class="form-grid">
+          <div class="wide" style="background:var(--muted-bg);padding:12px;border-radius:var(--radius);font-size:13px">
+            Total Bayar: <b>${money(tx.totalBayar)}</b> &nbsp;|&nbsp;
+            Sudah Dibayar: <b>${money(tx.jumlahDibayar)}</b> &nbsp;|&nbsp;
+            Sisa: <b>${money(tx.sisaPembayaran)}</b>
+          </div>
+          ${input('jumlahDibayar', 'Total Sudah Dibayar (kumulatif)', tx.jumlahDibayar || 0, true, 'number')}
+          ${select('statusPembayaran', 'Status Pembayaran', tx.statusPembayaran || 'Belum Bayar', ['Belum Bayar', 'DP', 'Lunas'])}
+          <div class="wide actions">
+            <button type="button" class="secondary" onclick="quickPay('${kode}', ${tx.totalBayar})">Tandai Lunas</button>
+            <button>Simpan</button>
+          </div>
+        </form>`);
+            document.getElementById('payForm').onsubmit = async e => {
+                e.preventDefault();
+                const obj = formObject(e.target);
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    state.data = await call('updatePaymentStatus', kode, Number(obj.jumlahDibayar), obj.statusPembayaran);
+                    closeModal(); render(); toast('Status pembayaran diperbarui.');
+                });
+            };
+        }
+
+        async function quickPay(kode, totalBayar) {
+            state.data = await call('updatePaymentStatus', kode, totalBayar, 'Lunas');
+            closeModal(); render(); toast('Transaksi ditandai Lunas.');
+        }
+
+        async function doConfirmPickup(kode) {
+            if (!confirm('Konfirmasi jas sudah diambil? Stok akan berkurang.')) return;
+            state.data = await call('confirmPickup', kode);
+            render(); toast('Status diubah ke Sedang Disewa, stok dikurangi.');
+        }
+
+        function openEditTransactionForm(t) {
+            const today = new Date().toISOString().slice(0, 10);
+            openModal('Edit Transaksi — ' + t.kodeTransaksi, `
+        <form id="editTxForm" class="grid">
+          ${hidden('kodeTransaksi', t.kodeTransaksi)}
+          <div class="form-grid">
+            ${input('tanggalSewa', 'Tanggal Sewa', t.tanggalSewa, true, 'date')}
+            ${input('tanggalKembali', 'Tanggal Wajib Kembali', t.tanggalKembali, true, 'date')}
+            ${input('deposit', 'Deposit / Jaminan', t.deposit, false, 'number')}
+            ${input('potongan', 'Potongan Harga', t.potongan || 0, false, 'number')}
+            ${input('jumlahDibayar', 'Jumlah Sudah Dibayar', t.jumlahDibayar || 0, false, 'number')}
+            ${select('statusPembayaran', 'Status Pembayaran', t.statusPembayaran || 'Belum Bayar', ['Belum Bayar', 'DP', 'Lunas'])}
+            ${hidden('fotoCustomerUrl', t.fotoCustomerUrl)}
+            ${textarea('catatan', 'Catatan', t.catatan)}
+          </div>
+          <div>
+            <b>Item Disewa</b>
+            <div id="editItemRows"></div>
+            <button type="button" class="secondary" onclick="addItemRow('editItemRows')">Tambah Item</button>
+          </div>
+          <div class="actions"><button>Simpan Perubahan</button></div>
+        </form>`);
+            // Pre-fill item rows
+            t.items.forEach(item => addItemRow('editItemRows', item));
+            document.getElementById('editTxForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    const obj = formObject(e.target);
+                    obj.items = [...document.querySelectorAll('#editItemRows .item-row')].map(row => {
+                        const selectEl = row.querySelector('[name=kodeJas]');
+                        const inv = state.data.inventory.find(i => i.kodeJas === selectEl.value) || {};
+                        return {
+                            kodeJas: selectEl.value,
+                            namaJas: inv.namaJas,
+                            jenisJas: inv.jenisJas,
+                            warna: inv.warna,
+                            ukuran: inv.ukuran,
+                            jumlah: Number(row.querySelector('[name=jumlah]').value || 0),
+                            harga: row.querySelector('[name=harga]').value
+                        };
+                    });
+                    state.data = await call('updateTransaction', obj);
+                    closeModal(); render(); toast('Transaksi berhasil diperbarui.');
+                });
+            };
+        }
+
+        function renderReports() {
+            const r = state.data.reports;
+            const bep = r.bep || { totalModal: 0, totalPendapatan: 0, sisaBep: 0 };
+            document.getElementById('reports').innerHTML = `
+        <div class="grid cards" style="grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 14px;">
+          ${metric('Total Modal (CAPEX)', money(bep.totalModal))}
+          ${metric('Total Pendapatan', money(bep.totalPendapatan))}
+          ${metric('Sisa Balik Modal (BEP)', bep.sisaBep > 0 ? money(bep.sisaBep) : 'SUDAH BEP! 🎉')}
+        </div>
+        <div class="grid two">
+          <div class="panel"><div class="panel-head"><h2>Pendapatan Harian</h2><button class="secondary" onclick="window.print()">Print/PDF</button></div><div class="panel-body">${barChartFromPairs(r.dailyRevenue)}</div></div>
+          <div class="panel"><div class="panel-head"><h2>Barang Paling Laku</h2></div><div class="panel-body">${listPairs(r.bestItems, 'Belum ada data.')}</div></div>
+          <div class="panel"><div class="panel-head"><h2>Warna & Ukuran</h2></div><div class="panel-body">${listPairs(r.bestColors, 'Belum ada data.')}<hr>${listPairs(r.bestSizes, 'Belum ada data.')}</div></div>
+          <div class="panel"><div class="panel-head"><h2>Inventori Perlu Perhatian</h2></div><div class="panel-body">${r.lowStock.map(i => esc(i.namaJas)).join('<br>') || 'Tidak ada stok habis.'}<hr>${r.damaged.map(i => `${esc(i.namaJas)} - ${esc(i.kondisi)}`).join('<br>') || 'Tidak ada barang rusak/laundry.'}</div></div>
+        </div>`;
+        }
+
+        function renderExpenses() {
+            const expenseMode = state.expenseTab || 'operasional';
+            let tabsHtml = `
+              <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                <button class="${expenseMode === 'operasional' ? '' : 'ghost'}" onclick="state.expenseTab='operasional';renderExpenses()">Pengeluaran Operasional</button>
+                <button class="${expenseMode === 'modal' ? '' : 'ghost'}" onclick="state.expenseTab='modal';renderExpenses()">Modal Inventori</button>
+              </div>
+            `;
+
+            if (expenseMode === 'operasional') {
+                const rows = state.data.expenses;
+                document.getElementById('expenses').innerHTML = `
+          <div class="panel">
+            <div class="panel-head"><h2>Pengeluaran & Modal</h2><button onclick="openExpenseForm()">Tambah Pengeluaran</button></div>
+            <div class="panel-body">
+              ${tabsHtml}
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Tanggal</th><th>Kategori</th><th>Deskripsi</th><th>Jumlah</th><th>Catatan</th></tr></thead>
+                  <tbody>${rows.map(e => `<tr><td data-label="Tanggal">${esc(e.tanggal)}</td><td data-label="Kategori">${esc(e.kategori)}</td><td data-label="Deskripsi">${esc(e.deskripsi)}</td><td data-label="Jumlah">${money(e.jumlah)}</td><td data-label="Catatan">${esc(e.catatan)}</td></tr>`).join('') || emptyRow(5)}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>`;
+            } else {
+                const rows = state.data.modal || [];
+                document.getElementById('expenses').innerHTML = `
+          <div class="panel">
+            <div class="panel-head"><h2>Pengeluaran & Modal</h2><button onclick="openModalForm()">Tambah Modal</button></div>
+            <div class="panel-body">
+              ${tabsHtml}
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Barang/Aset</th><th>Satuan/Merk</th><th>Qty x Harga</th><th>Total Harga</th><th>Tanggal</th><th>Aksi</th></tr></thead>
+                  <tbody>${rows.map(m => `<tr><td data-label="Barang">${esc(m.barang)}</td><td data-label="Satuan/Merk">${esc(m.satuan)} - ${esc(m.merk)}</td><td data-label="Qty x Harga">${m.jumlah} x ${money(m.hargaSatuan)}</td><td data-label="Total">${money(m.totalHarga)}</td><td data-label="Tanggal">${esc(m.createdAt).slice(0, 10)}</td><td data-label="Aksi" class="actions"><button class="ghost btn-delete" onclick="deleteModalItem('${m.id}')">Hapus</button></td></tr>`).join('') || emptyRow(6)}</tbody>
+                </table>
+              </div>
+            </div>
+          </div>`;
+            }
+        }
+
+        function openModalForm() {
+            openModal('Tambah Modal Inventori', `
+        <form id="modalForm" class="form-grid">
+          ${input('barang', 'Nama Barang/Aset', '', true)}
+          ${input('merk', 'Merek', '')}
+          ${input('satuan', 'Satuan (Pcs, Lusin, dll)', 'Pcs', true)}
+          ${input('jumlah', 'Jumlah/Qty', 1, true, 'number')}
+          ${input('hargaSatuan', 'Harga Satuan', 0, true, 'number')}
+          ${textarea('catatan', 'Catatan', '')}
+          <div class="wide actions"><button>Simpan</button></div>
+        </form>`);
+            document.getElementById('modalForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    state.data = await call('saveModal', formObject(e.target));
+                    closeModal(); render(); toast('Modal tersimpan.');
+                });
+            };
+        }
+
+        async function deleteModalItem(id) {
+            if (!confirm('Hapus modal inventori ini?')) return;
+            state.data = await call('deleteModal', id);
+            render(); toast('Modal dihapus.');
+        }
+
+        function openInventoryForm(item = {}) {
+            openModal(item.kodeJas ? 'Edit Barang' : 'Tambah Barang', `
+        <form id="inventoryForm" class="form-grid">
+          ${hidden('kodeJas', item.kodeJas)}${hidden('createdAt', item.createdAt)}
+          ${input('namaJas', 'Nama Barang', item.namaJas, true)}
+          ${select('jenisJas', 'Kategori', item.jenisJas, ['Jas', 'Celana', 'Dasi', 'Sepatu', 'Kaos Putih', 'Vest', 'Aksesoris', 'Lainnya'])}
+          ${input('warna', 'Warna', item.warna, true)}
+          ${input('ukuran', 'Ukuran', item.ukuran, true)}
+          ${input('hargaDefault', 'Harga Sewa Default', item.hargaDefault, true, 'number')}
+          ${input('jumlahStok', 'Jumlah Stok', item.jumlahStok, true, 'number')}
+          ${input('stokTersedia', 'Stok Tersedia', item.stokTersedia || item.jumlahStok || 0, false, 'number')}
+          ${input('stokDisewa', 'Stok Disewa', item.stokDisewa || 0, false, 'number')}
+          ${select('kondisi', 'Kondisi', item.kondisi, ['Baik', 'Rusak Ringan', 'Perlu Laundry', 'Tidak Layak'])}
+          ${select('statusLaundry', 'Status Laundry', item.statusLaundry, ['Ready', 'Perlu Laundry', 'Sedang Laundry'])}
+          ${input('lokasi', 'Lokasi Penyimpanan', item.lokasi)}
+          ${hidden('fotoUrl', item.fotoUrl)}
+          <label class="wide">Upload Foto Barang<input type="file" accept="image/png,image/jpeg" onchange="uploadToField(this,'fotoUrl')"><span class="field-note">File akan disimpan ke Google Drive dan linknya dipakai otomatis.</span>${preview('fotoUrl', item.fotoUrl)}</label>
+          ${textarea('catatan', 'Catatan', item.catatan)}
+          <div class="wide actions"><button>Simpan</button></div>
+        </form>`);
+            document.getElementById('inventoryForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    state.data = await call('saveInventory', formObject(e.target));
+                    closeModal(); render(); toast('Inventori tersimpan.');
+                });
+            };
+        }
+
+        function openCustomerForm(c = {}) {
+            openModal(c.customerId ? 'Edit Customer' : 'Tambah Customer', `
+        <form id="customerForm" class="form-grid">
+          ${hidden('customerId', c.customerId)}${hidden('createdAt', c.createdAt)}
+          ${input('nama', 'Nama', c.nama, true)}
+          ${input('whatsapp', 'Nomor WhatsApp', c.whatsapp, true)}
+          ${input('instagram', 'Instagram', c.instagram)}
+          ${input('alamat', 'Alamat', c.alamat)}
+          ${hidden('fotoCustomerUrl', c.fotoCustomerUrl)}
+          ${hidden('fotoPakaiJasUrl', c.fotoPakaiJasUrl)}
+          <label>Upload Foto Customer<input type="file" accept="image/png,image/jpeg" onchange="uploadToField(this,'fotoCustomerUrl')">${preview('fotoCustomerUrl', c.fotoCustomerUrl)}</label>
+          <label>Upload Foto Pakai Jas<input type="file" accept="image/png,image/jpeg" onchange="uploadToField(this,'fotoPakaiJasUrl')">${preview('fotoPakaiJasUrl', c.fotoPakaiJasUrl)}</label>
+          ${select('status', 'Status', c.status, ['Aktif', 'Loyal', 'Blacklist'])}
+          ${textarea('catatan', 'Catatan Customer', c.catatan)}
+          <div class="wide actions"><button>Simpan</button></div>
+        </form>`);
+            document.getElementById('customerForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    state.data = await call('saveCustomer', formObject(e.target));
+                    closeModal(); render(); toast('Customer tersimpan.');
+                });
+            };
+        }
+
+        function openTransactionForm() {
+            const today = new Date().toISOString().slice(0, 10);
+            openModal('Transaksi Baru', `
+        <form id="txForm" class="grid">
+          <div class="form-grid">
+            ${selectCustomer()}
+            <div id="newCustomerFields" class="wide form-grid">
+              ${input('namaCustomer', 'Nama Customer Baru', '')}
+              ${input('whatsapp', 'WhatsApp', '')}
+              ${input('alamat', 'Alamat', '')}
+              ${hidden('fotoCustomerUrl', '')}
+              <label>Upload Foto Customer<input type="file" accept="image/png,image/jpeg" onchange="uploadToField(this,'fotoCustomerUrl')">${preview('fotoCustomerUrl', '')}</label>
+            </div>
+            ${input('tanggalSewa', 'Tanggal Sewa', today, true, 'date')}
+            ${input('tanggalKembali', 'Tanggal Wajib Kembali', today, true, 'date')}
+            ${input('deposit', 'Deposit / Jaminan', 0, false, 'number')}
+            ${input('jumlahDibayar', 'Jumlah Dibayar Sekarang', 0, false, 'number')}
+            ${select('statusPembayaran', 'Status Pembayaran', 'Belum Bayar', ['Belum Bayar', 'DP', 'Lunas'])}
+            ${input('potongan', 'Potongan Harga (Nominal)', 0, false, 'number')}
+            ${textarea('catatan', 'Catatan Transaksi', '')}
+          </div>
+          <div>
+            <b>Item Disewa</b>
+            <div id="itemRows"></div>
+            <button type="button" class="secondary" onclick="addItemRow('itemRows')">Tambah Item</button>
+          </div>
+          <div class="actions"><button>Buat Transaksi</button></div>
+        </form>`);
+            addItemRow('itemRows');
+            document.getElementById('txForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Memproses...', async () => {
+                    const obj = formObject(e.target);
+                    obj.items = [...document.querySelectorAll('#itemRows .item-row')].map(row => {
+                        const selectEl = row.querySelector('[name=kodeJas]');
+                        const inv = state.data.inventory.find(i => i.kodeJas === selectEl.value) || {};
+                        const jumlah = Number(row.querySelector('[name=jumlah]').value || 0);
+                        if (inv.stokTersedia && jumlah > Number(inv.stokTersedia)) {
+                            throw new Error(`Qty ${inv.namaJas} melebihi stok tersedia (${inv.stokTersedia}).`);
+                        }
+                        return {
+                            kodeJas: selectEl.value,
+                            namaJas: inv.namaJas,
+                            jenisJas: inv.jenisJas,
+                            warna: inv.warna,
+                            ukuran: inv.ukuran,
+                            jumlah,
+                            harga: row.querySelector('[name=harga]').value
+                        };
+                    });
+                    if (obj.customerId) {
+                        const c = state.data.customers.find(c => c.customerId === obj.customerId);
+                        obj.namaCustomer = c.nama; obj.whatsapp = c.whatsapp; obj.alamat = c.alamat;
+                    }
+                    state.data = await call('createTransaction', obj);
+                    closeModal(); render(); toast('Transaksi dibuat dan stok diperbarui.');
+                }, error => toast(error.message || 'Transaksi gagal dibuat.', true));
+            };
+            toggleCustomerFields();
+        }
+
+        function addItemRow(containerId, prefill) {
+            const wrap = document.getElementById(containerId || 'itemRows');
+            if (!wrap) return;
+            const id = Math.random().toString(36).slice(2);
+            const inv = prefill ? state.data.inventory.find(i => i.kodeJas === prefill.kodeJas) : null;
+            wrap.insertAdjacentHTML('beforeend', `
+        <div class="item-row" id="${id}">
+          <label>Item<select name="kodeJas" onchange="syncItemPrice(this)">
+            <option value="">Pilih Item</option>
+            ${state.data.inventory.map(i => `<option value="${i.kodeJas}" data-price="${i.hargaDefault}" ${prefill && prefill.kodeJas === i.kodeJas ? 'selected' : ''}>${esc(i.namaJas)} - ${esc(i.warna)} ${esc(i.ukuran)} (stok ${i.stokTersedia})</option>`).join('')}
+          </select></label>
+          <label>Qty<input name="jumlah" type="number" min="1" value="${prefill ? prefill.jumlah : 1}"></label>
+          <label>Harga<input name="harga" type="number" min="0" value="${prefill ? prefill.harga : (inv ? inv.hargaDefault : 0)}"></label>
+          <button type="button" class="secondary" onclick="document.getElementById('${id}').remove()">X</button>
+        </div>`);
+        }
+
+        function syncItemPrice(selectEl) {
+            const row = selectEl.closest('.item-row');
+            const selected = selectEl.selectedOptions[0];
+            const inv = state.data.inventory.find(i => i.kodeJas === selectEl.value);
+            row.querySelector('[name=harga]').value = selected.dataset.price || 0;
+            const qty = row.querySelector('[name=jumlah]');
+            if (inv) {
+                qty.max = inv.stokTersedia;
+                qty.value = Math.min(Number(qty.value || 1), Number(inv.stokTersedia));
+            }
+        }
+
+        function openExpenseForm() {
+            openModal('Tambah Pengeluaran', `
+        <form id="expenseForm" class="form-grid">
+          ${input('tanggal', 'Tanggal', new Date().toISOString().slice(0, 10), true, 'date')}
+          ${select('kategori', 'Kategori', 'Laundry', ['Laundry', 'Perbaikan', 'Pembelian Jas', 'Operasional', 'Lainnya'])}
+          ${input('deskripsi', 'Deskripsi', '', true)}
+          ${input('jumlah', 'Jumlah', 0, true, 'number')}
+          ${textarea('catatan', 'Catatan', '')}
+          <div class="wide actions"><button>Simpan</button></div>
+        </form>`);
+            document.getElementById('expenseForm').onsubmit = async e => {
+                e.preventDefault();
+                await withButtonLoading(e.submitter, 'Menyimpan...', async () => {
+                    state.data = await call('saveExpense', formObject(e.target));
+                    closeModal(); render(); toast('Pengeluaran tersimpan.');
+                });
+            };
+        }
+
+        async function deleteInv(kode) {
+            if (!confirm('Hapus barang ini?')) return;
+            state.data = await call('deleteInventory', kode);
+            render(); toast('Inventori dihapus.');
+        }
+
+        async function finishTx(kode) {
+            state.data = await call('updateTransactionStatus', kode, 'Selesai');
+            render(); toast('Transaksi selesai dan stok dikembalikan.');
+        }
+
+        async function cancelTx(kode) {
+            if (!confirm('Batalkan transaksi ini?')) return;
+            state.data = await call('cancelTransaction', kode);
+            render(); toast('Transaksi dibatalkan.');
+        }
+
+        async function printReceipt(kode) {
+            const html = await call('getReceiptHtml', kode);
+            const win = window.open('', '_blank');
+            win.document.open(); win.document.write(html); win.document.close();
+        }
+
+        async function sendReceiptViaWA(kode) {
+            try {
+                const tx = state.data.transactions.find(t => t.kodeTransaksi === kode);
+                if (!tx || !tx.whatsapp) {
+                    throw new Error('Nomor WhatsApp tidak ditemukan untuk transaksi ini.');
+                }
+
+                // Buat PDF di Google Drive via backend (bisa butuh beberapa detik)
+                toast('Membuat PDF struk, mohon tunggu...');
+                const result = await call('getReceiptPdfUrl', kode);
+
+                // Ringkasan item
+                const itemList = tx.items.map(i =>
+                    `  • ${i.namaJas} (${i.warna}/${i.ukuran}) x${i.jumlah} = ${money(i.harga * i.jumlah)}`
+                ).join('\n');
+
+                const potonganLine = number_(tx.potongan) > 0
+                    ? `\nPotongan  : -${money(tx.potongan)}` : '';
+                const dendaLine = number_(tx.denda) > 0
+                    ? `\nDenda     : ${money(tx.denda)}` : '';
+
+                // Pesan WhatsApp dengan link PDF
+                const message =
+`🧥 *Struk Sewa Jas - Stitch and Moral*
+━━━━━━━━━━━━━━━━━━━
+No Transaksi : ${tx.kodeTransaksi}
+Customer     : ${tx.namaCustomer}
+Tgl Sewa     : ${tx.tanggalSewa}
+Tgl Kembali  : ${tx.tanggalKembali}
+━━━━━━━━━━━━━━━━━━━
+*Item yang Disewa:*
+${itemList}
+━━━━━━━━━━━━━━━━━━━
+Subtotal  : ${money(tx.subtotal)}
+Deposit   : ${money(tx.deposit)}${potonganLine}${dendaLine}
+*Total Bayar : ${money(tx.totalBayar)}*
+━━━━━━━━━━━━━━━━━━━
+Status : ${tx.status}
+${tx.catatan ? `Catatan: ${tx.catatan}\n` : ''}
+📄 *Download Struk PDF:*
+${result.pdfUrl}
+
+Terima kasih sudah menyewa! 🙏`;
+
+                // Normalisasi nomor WA
+                const rawNumber = String(tx.whatsapp || '').replace(/\D/g, '');
+                const cleanNumber = rawNumber.startsWith('0')
+                    ? '62' + rawNumber.slice(1)
+                    : rawNumber;
+
+                if (!cleanNumber) throw new Error('Nomor WhatsApp tidak valid.');
+
+                window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                toast('Buka WhatsApp untuk kirim struk PDF ke customer.');
+            } catch (error) {
+                toast(error.message || 'Gagal mengirim struk ke WhatsApp.', true);
+            }
+        }
+
+        async function uploadToField(input, fieldName) {
+            const file = input.files[0];
+            if (!file) return;
+            const data = await readFile(file);
+            const saved = await call('uploadImage', { name: file.name, mimeType: file.type, data });
+            document.querySelector(`[name="${fieldName}"]`).value = saved.url;
+            renderUploadPreview(fieldName, saved.url);
+            toast('Foto berhasil diupload ke Drive.');
+        }
+
+        function readFile(file) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function openModal(title, body) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = body;
+            document.body.classList.add('modal-open');
+            document.getElementById('modal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+            document.body.classList.remove('modal-open');
+        }
+
+        function formObject(form) {
+            return Object.fromEntries(new FormData(form).entries());
+        }
+
+        function input(name, label, value = '', required = false, type = 'text') {
+            return `<label>${label}<input name="${name}" type="${type}" value="${esc(value)}" ${required ? 'required' : ''}></label>`;
+        }
+
+        function hidden(name, value = '') {
+            return `<input type="hidden" name="${name}" value="${esc(value || '')}">`;
+        }
+
+        function textarea(name, label, value = '') {
+            return `<label class="wide">${label}<textarea name="${name}">${esc(value || '')}</textarea></label>`;
+        }
+
+        function select(name, label, value, options) {
+            return `<label>${label}<select name="${name}">${options.map(o => `<option ${o === value ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+        }
+
+        function selectCustomer() {
+            return `
+        <label>Customer Existing
+          <input id="customerSearch" list="customerOptions" placeholder="Cari nama atau nomor WhatsApp..." oninput="handleCustomerSearch(this.value)">
+          <input type="hidden" name="customerId" value="">
+          <datalist id="customerOptions">
+            ${state.data.customers.map(c => `<option value="${esc(customerLabel(c))}"></option>`).join('')}
+          </datalist>
+          <span class="field-note">Kosongkan atau ketik data baru jika customer belum terdaftar.</span>
+        </label>`;
+        }
+
+        function toggleCustomerFields() {
+            const selectEl = document.querySelector('#txForm [name="customerId"]');
+            const fields = document.getElementById('newCustomerFields');
+            if (!selectEl || !fields) return;
+            fields.classList.toggle('hidden', Boolean(selectEl.value));
+        }
+
+        function handleCustomerSearch(value) {
+            const hiddenInput = document.querySelector('#txForm [name="customerId"]');
+            if (!hiddenInput) return;
+            const normalized = String(value || '').toLowerCase().trim();
+            const customer = state.data.customers.find(c => customerLabel(c).toLowerCase() === normalized);
+            hiddenInput.value = customer ? customer.customerId : '';
+            toggleCustomerFields();
+        }
+
+        function customerLabel(customer) {
+            return `${customer.nama || '-'} - ${customer.whatsapp || '-'}`;
+        }
+
+        function preview(fieldName, url) {
+            const shown = url ? 'show' : '';
+            return `<div class="upload-preview ${shown}" data-preview-for="${fieldName}">${url ? `<img src="${thumb(url)}"><a href="${esc(url)}" target="_blank">Lihat foto</a>` : ''}</div>`;
+        }
+
+        function renderUploadPreview(fieldName, url) {
+            const previewEl = document.querySelector(`[data-preview-for="${fieldName}"]`);
+            if (!previewEl) return;
+            previewEl.innerHTML = `<img src="${thumb(url)}"><a href="${esc(url)}" target="_blank">Lihat foto</a>`;
+            previewEl.classList.add('show');
+        }
+
+        function metric(label, value) {
+            return `<div class="card metric"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+        }
+
+        function miniRank(title, item) {
+            return `<div class="card metric"><div class="label">${title}</div><div class="value">${esc(item.label)}</div><div class="muted">${item.value} transaksi/item</div></div>`;
+        }
+
+        function renderReminder(rows, emptyText) {
+            return rows.length ? rows.map(t => `<div class="card"><b>${esc(t.namaCustomer)}</b><br>${t.items.map(i => esc(i.namaJas)).join(', ')}<br><span class="muted">${esc(t.tanggalKembali)} - ${esc(t.kodeTransaksi)}</span></div>`).join('') : `<span class="muted">${emptyText}</span>`;
+        }
+
+        function barChart(map) {
+            const pairs = Object.keys(map).sort().map(k => ({ label: k, value: map[k] }));
+            return barChartFromPairs(pairs);
+        }
+
+        function barChartFromPairs(pairs) {
+            if (!pairs.length) return '<span class="muted">Belum ada data.</span>';
+            const max = Math.max(...pairs.map(p => Number(p.value)));
+            return `<div class="chart">${pairs.map(p => `<div class="bar"><b>${esc(p.label)}</b><span><i style="width:${max ? (p.value / max) * 100 : 0}%"></i></span><em>${money(p.value)}</em></div>`).join('')}</div>`;
+        }
+
+        function listPairs(pairs, empty) {
+            if (!pairs || !pairs.length) return `<span class="muted">${empty}</span>`;
+            return pairs.map(p => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:7px 0"><span>${esc(p.label)}</span><b>${p.value}</b></div>`).join('');
+        }
+
+        function badge(value) {
+            const text = esc(value || '-');
+            const klass = ['Baik', 'Ready', 'Aktif', 'Loyal'].includes(value) ? 'ok' : ['Perlu Laundry', 'Sedang Laundry', 'Rusak Ringan'].includes(value) ? 'warn' : ['Tidak Layak', 'Blacklist'].includes(value) ? 'danger' : '';
+            return `<span class="badge ${klass}">${text}</span>`;
+        }
+
+        function statusBadge(status) {
+            const klass = status === 'Selesai' ? 'ok' : status === 'Terlambat' ? 'danger' : status === 'Dibatalkan' ? 'danger' : status === 'Booking' ? '' : 'warn';
+            return `<span class="badge ${klass}">${esc(status)}</span>`;
+        }
+
+        function money(value) {
+            return 'Rp ' + Number(value || 0).toLocaleString('id-ID');
+        }
+
+
+        function waLink(value) {
+            // Handle potential scientific notation if value comes as a number
+            let valStr = '';
+            if (typeof value === 'number') {
+                valStr = value.toLocaleString('fullwide', { useGrouping: false });
+            } else {
+                valStr = String(value || '');
+            }
+            const number = valStr.replace(/\D/g, '');
+            return number ? `<a href="https://wa.me/${number.startsWith('0') ? '62' + number.slice(1) : number}" target="_blank">${esc(value)}</a>` : '-';
+        }
+
+        function thumb(url) {
+            const match = String(url).match(/[-\w]{25,}/);
+            return match ? `https://drive.google.com/thumbnail?id=${match[0]}` : esc(url);
+        }
+
+        function searchHit(obj) {
+            if (!state.search) return true;
+            return JSON.stringify(obj).toLowerCase().includes(state.search.toLowerCase());
+        }
+
+        function emptyRow(cols) {
+            return `<tr><td colspan="${cols}" class="muted">Belum ada data.</td></tr>`;
+        }
+
+        function esc(value) {
+            return String(value ?? '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+        }
+
+        function json(value) {
+            return JSON.stringify(value).replace(/"/g, '&quot;');
+        }
+
+        function toast(message, isError = false) {
+            const el = document.getElementById('toast');
+            el.textContent = message;
+            el.style.background = isError ? '#991b1b' : '#09090b';
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3200);
+        }
+
+        function showSetupStatus(message, isError = false) {
+            const el = document.getElementById('setupStatus');
+            el.innerHTML = message;
+            el.classList.toggle('error', isError);
+            el.classList.add('show');
+        }
+
+        async function withButtonLoading(button, loadingText, action, onError) {
+            const target = button || document.activeElement;
+            const originalText = target && target.tagName === 'BUTTON' ? target.textContent : '';
+            if (target && target.tagName === 'BUTTON') {
+                target.disabled = true;
+                target.textContent = loadingText;
+            }
+            try {
+                await action();
+            } catch (error) {
+                if (onError) onError(error);
+                else toast(error.message || 'Proses gagal.', true);
+            } finally {
+                if (target && target.tagName === 'BUTTON') {
+                    target.disabled = false;
+                    target.textContent = originalText;
+                }
+            }
+        }
+
+        function showInstallGuide() {
+            openModal('📱 Install Aplikasi PWA', `
+        <div style="text-align: center; padding: 10px;">
+          <img src="https://img.icons8.com/?size=96&id=81235&format=png&color=000000" style="margin-bottom: 15px;">
+          <p>Gunakan aplikasi ini seperti aplikasi native di HP Anda!</p>
+          
+          <div style="text-align: left; background: var(--muted-bg); padding: 15px; border-radius: var(--radius); margin-top: 15px;">
+            <h4 style="margin-top:0">Android (Chrome)</h4>
+            <ol style="padding-left: 20px; font-size: 13px;">
+              <li>Klik ikon <b>titik tiga (⋮)</b> di pojok kanan atas browser.</li>
+              <li>Pilih menu <b>"Install App"</b> atau <b>"Add to Home screen"</b>.</li>
+            </ol>
+            
+            <h4 style="margin-bottom:8px">iOS (Safari)</h4>
+            <ol style="padding-left: 20px; font-size: 13px;">
+              <li>Klik tombol <b>Share</b> (kotak dengan panah ke atas) di bawah layar.</li>
+              <li>Scroll ke bawah dan pilih <b>"Add to Home Screen"</b>.</li>
+            </ol>
+          </div>
+          
+          <p style="font-size: 12px; color: var(--muted); margin-top: 15px;">
+            Setelah ditambahkan, buka ikon aplikasi di layar utama HP Anda untuk pengalaman full-screen!
+          </p>
+        </div>
+      `);
+        }
+    </script>
+</body>
+
+</html>
