@@ -291,8 +291,8 @@ export default async function LaporanPage() {
       </div>
 
       {/* 2. BEP PROGRESS CARD */}
-      <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
               <Percent className="w-5 h-5 text-amber-500" />
@@ -302,8 +302,8 @@ export default async function LaporanPage() {
               Total Investasi Modal Awal (CAPEX): <b>{formatRupiah(totalModal)}</b> ({modalList.length} aset jas & perlengkapan)
             </p>
           </div>
-          <div className="text-right">
-            <span className={`text-xl font-bold ${isBepReached ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+          <div className="text-left sm:text-right">
+            <span className={`text-lg sm:text-xl font-bold ${isBepReached ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
               {isBepReached ? "SUDAH BEP! 🎉" : `Sisa ${formatRupiah(sisaBep)}`}
             </span>
             <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">

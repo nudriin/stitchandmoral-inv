@@ -138,3 +138,18 @@ body {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
+
+/* Hide scrollbar utility for clean horizontal swipe tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile tap highlight reset */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+

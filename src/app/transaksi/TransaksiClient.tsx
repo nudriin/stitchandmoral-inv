@@ -940,7 +940,7 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
           />
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
           {["Semua", "Sedang Disewa", "Booking", "Selesai", "Terlambat", "Dibatalkan"].map(
             (st) => (
               <button

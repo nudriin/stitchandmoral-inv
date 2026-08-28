@@ -10,17 +10,18 @@ import {
   BarChart3,
   Wallet,
   LogOut,
+  Sparkles,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/transaksi", label: "Transaksi", icon: ReceiptText },
   { href: "/inventori", label: "Inventori", icon: Layers },
   { href: "/customers", label: "Customer", icon: Users },
   { href: "/laporan", label: "Laporan", icon: BarChart3 },
-  { href: "/biaya", label: "Biaya & Modal", icon: Wallet },
+  { href: "/biaya", label: "Biaya", icon: Wallet },
 ];
 
 export function Sidebar() {
@@ -33,11 +34,16 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col w-64 border-r border-slate-200 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/70 backdrop-blur-xl h-screen sticky top-0 px-4 py-6 justify-between transition-colors">
       <div>
         {/* Brand */}
-        <div className="px-3 mb-8">
-          <h1 className="font-bold text-base text-slate-900 dark:text-zinc-100 tracking-tight">
-            Stitch & Moral
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400">Sewa Jas PKY</p>
+        <div className="px-3 mb-8 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 font-bold shadow-sm">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h1 className="font-bold text-sm text-slate-900 dark:text-zinc-100 tracking-tight">
+              Stitch & Moral
+            </h1>
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400">Sewa Jas PKY</p>
+          </div>
         </div>
 
         {/* Menu Items */}
@@ -66,7 +72,7 @@ export function Sidebar() {
                       : "text-slate-500 dark:text-zinc-400"
                   }`}
                 />
-                <span>{item.label}</span>
+                <span>{item.label === "Home" ? "Dashboard" : item.label}</span>
               </Link>
             );
           })}
@@ -88,6 +94,38 @@ export function Sidebar() {
   );
 }
 
+export function MobileHeader() {
+  const pathname = usePathname();
+  if (pathname === "/login") return null;
+
+  return (
+    <header className="md:hidden sticky top-0 z-40 bg-white/90 dark:bg-zinc-950/85 backdrop-blur-xl border-b border-slate-200/80 dark:border-zinc-800/80 px-4 py-3 flex items-center justify-between transition-colors shadow-xs">
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-slate-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 font-bold shadow-xs">
+          <Sparkles className="w-3.5 h-3.5" />
+        </div>
+        <div>
+          <h1 className="font-bold text-xs text-slate-900 dark:text-zinc-100 tracking-tight leading-none">
+            Stitch & Moral
+          </h1>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-none mt-0.5">Sewa Jas PKY</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        <ThemeToggle />
+        <button
+          onClick={() => logout()}
+          className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+          title="Keluar Akun"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
 export function BottomNav() {
   const pathname = usePathname();
 
@@ -95,7 +133,7 @@ export function BottomNav() {
   if (pathname === "/login") return null;
 
   return (
-    <nav className="md:hidden fixed bottom-3 left-3 right-3 z-50 bg-white/95 dark:bg-zinc-900/90 border border-slate-200 dark:border-zinc-800 backdrop-blur-xl rounded-2xl p-1.5 shadow-2xl flex items-center justify-around transition-colors">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/90 border-t border-slate-200 dark:border-zinc-800 backdrop-blur-2xl px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl flex items-center justify-around transition-colors">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive =
@@ -107,14 +145,22 @@ export function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-xl text-[10px] font-medium transition ${
+            className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition active:scale-95 ${
               isActive
-                ? "bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow"
-                : "text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
+                ? "text-slate-950 dark:text-zinc-50 font-bold"
+                : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
             }`}
           >
-            <Icon className="w-4 h-4 mb-0.5" />
-            <span className="truncate max-w-[50px]">{item.label}</span>
+            <div
+              className={`p-1 rounded-lg transition-all ${
+                isActive
+                  ? "bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs scale-105"
+                  : ""
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+            </div>
+            <span className="truncate max-w-[54px] mt-0.5 leading-tight">{item.label}</span>
           </Link>
         );
       })}
