@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type { Transaksi, Inventori, Customer, TransactionItem } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { generateReceiptCanvas } from "@/lib/receiptCanvas";
 
 function formatThousand(num: number): string {
   if (!num) return "";
@@ -642,32 +643,32 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
 
     setSharingWa(true);
     try {
-      const el = document.getElementById("printableReceipt");
-      if (el) {
-        const html2canvas = (await import("html2canvas")).default;
-        const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff" });
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-        
-        if (blob) {
-          const file = new File([blob], `Struk_${tx.kode_transaksi}.png`, { type: "image/png" });
-          
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: `Struk Sewa - ${tx.kode_transaksi}`,
-              text: message,
-            });
-            setSharingWa(false);
-            return;
-          }
+      const canvas = generateReceiptCanvas(tx);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+
+      if (blob) {
+        const file = new File([blob], `Struk_${tx.kode_transaksi}.png`, { type: "image/png" });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: `Struk Sewa - ${tx.kode_transaksi}`,
+            text: message,
+          });
+          setSharingWa(false);
+          return;
         }
       }
-    } catch (err) {
-      console.warn("Web Share API not supported or user cancelled:", err);
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        console.warn("Native share failed or user dismissed:", err);
+      }
     } finally {
       setSharingWa(false);
     }
 
+    // Direct WhatsApp fallback: Also trigger automatic receipt image download
+    downloadReceiptImage();
     const cleanPhone = tx.whatsapp.replace(/\D/g, "");
     const formattedPhone = cleanPhone.startsWith("0") ? `62${cleanPhone.slice(1)}` : cleanPhone.startsWith("62") ? cleanPhone : `62${cleanPhone}`;
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
@@ -906,19 +907,20 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
     printWindow.document.close();
   }
 
-  async function downloadReceiptImage() {
-    const el = document.getElementById("printableReceipt");
-    if (!el) return;
+  function downloadReceiptImage() {
+    if (!selectedTx) return;
     try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff" });
+      const canvas = generateReceiptCanvas(selectedTx);
       const imgData = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = imgData;
-      link.download = `Struk_${selectedTx?.kode_transaksi || "Sewa"}.png`;
+      link.download = `Struk_${selectedTx.kode_transaksi || "Sewa"}.png`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (err) {
       console.error("Gagal mendownload gambar struk:", err);
+      alert("Gagal mendownload gambar struk.");
     }
   }
 
