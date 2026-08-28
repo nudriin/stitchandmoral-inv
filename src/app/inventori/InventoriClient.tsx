@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { formatRupiah, getDriveThumbnail } from "@/lib/utils";
 import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List } from "lucide-react";
 import type { Inventori } from "@/types/database";
@@ -22,19 +22,27 @@ export function InventoriClient({ initialItems }: Props) {
 
   const supabase = createClient();
 
-  const categories = ["Semua", "Jas", "Celana", "Dasi", "Sepatu", "Kaos Putih", "Vest", "Aksesoris", "Lainnya"];
+  const categories = useMemo(
+    () => ["Semua", "Jas", "Celana", "Dasi", "Sepatu", "Kaos Putih", "Vest", "Aksesoris", "Lainnya"],
+    []
+  );
 
-  const filteredItems = items.filter((item) => {
-    const matchSearch =
-      item.nama_jas.toLowerCase().includes(search.toLowerCase()) ||
-      item.kode_jas.toLowerCase().includes(search.toLowerCase()) ||
-      item.warna?.toLowerCase().includes(search.toLowerCase()) ||
-      item.ukuran?.toLowerCase().includes(search.toLowerCase());
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) => {
+      const matchSearch =
+        !q ||
+        item.nama_jas.toLowerCase().includes(q) ||
+        item.kode_jas.toLowerCase().includes(q) ||
+        item.warna?.toLowerCase().includes(q) ||
+        item.ukuran?.toLowerCase().includes(q);
 
-    const matchCategory = categoryFilter === "Semua" || item.jenis_jas === categoryFilter;
+      const matchCategory = categoryFilter === "Semua" || item.jenis_jas === categoryFilter;
 
-    return matchSearch && matchCategory;
-  });
+      return matchSearch && matchCategory;
+    });
+  }, [items, search, categoryFilter]);
+
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -239,13 +247,15 @@ export function InventoriClient({ initialItems }: Props) {
               return (
                 <div
                   key={item.id || item.kode_jas}
-                  className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3"
+                  className="cv-auto bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-start gap-3">
                     {thumb ? (
                       <img
                         src={thumb}
                         alt={item.nama_jas}
+                        loading="lazy"
+                        decoding="async"
                         className="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-950 shrink-0"
                       />
                     ) : (
@@ -328,12 +338,14 @@ export function InventoriClient({ initialItems }: Props) {
                   filteredItems.map((item) => {
                     const thumb = getDriveThumbnail(item.foto_url);
                     return (
-                      <tr key={item.id || item.kode_jas} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/30 transition">
+                      <tr key={item.id || item.kode_jas} className="cv-auto hover:bg-slate-50/80 dark:hover:bg-zinc-800/30 transition">
                         <td className="py-3 px-4">
                           {thumb ? (
                             <img
                               src={thumb}
                               alt={item.nama_jas}
+                              loading="lazy"
+                              decoding="async"
                               className="w-11 h-11 object-cover rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-950"
                             />
                           ) : (

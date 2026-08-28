@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { Plus, Wallet, Trash2, Tag, Calendar, Layers, LayoutGrid, List } from "lucide-react";
 import type { Pengeluaran, ModalItem } from "@/types/database";
@@ -23,8 +23,14 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
 
   const supabase = createClient();
 
-  const totalOperasional = expenses.reduce((sum, e) => sum + Number(e.jumlah || 0), 0);
-  const totalModal = modalItems.reduce((sum, m) => sum + Number(m.total_harga || 0), 0);
+  const totalOperasional = useMemo(
+    () => expenses.reduce((sum, e) => sum + Number(e.jumlah || 0), 0),
+    [expenses]
+  );
+  const totalModal = useMemo(
+    () => modalItems.reduce((sum, m) => sum + Number(m.total_harga || 0), 0),
+    [modalItems]
+  );
 
   async function handleAddExpense(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

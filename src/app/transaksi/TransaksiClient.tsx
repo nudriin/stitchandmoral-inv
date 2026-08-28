@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import {
   Plus,
@@ -289,21 +289,28 @@ export function TransaksiClient({
   const supabase = createClient();
 
   // Calculations for new transaction
-  const subtotal = selectedItems.reduce((sum, item) => sum + item.harga * item.jumlah, 0);
+  const subtotal = useMemo(
+    () => selectedItems.reduce((sum, item) => sum + item.harga * item.jumlah, 0),
+    [selectedItems]
+  );
   const totalBayar = Math.max(0, subtotal - potongan);
   const sisaPembayaran = Math.max(0, totalBayar - jumlahDibayar);
 
-  const filtered = transactions.filter((t) => {
-    const matchSearch =
-      t.kode_transaksi.toLowerCase().includes(search.toLowerCase()) ||
-      t.nama_customer.toLowerCase().includes(search.toLowerCase()) ||
-      t.whatsapp?.includes(search) ||
-      t.items?.some((i) => i.namaJas?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return transactions.filter((t) => {
+      const matchSearch =
+        !q ||
+        t.kode_transaksi.toLowerCase().includes(q) ||
+        t.nama_customer.toLowerCase().includes(q) ||
+        t.whatsapp?.includes(q) ||
+        t.items?.some((i) => i.namaJas?.toLowerCase().includes(q));
 
-    const matchStatus = statusFilter === "Semua" || t.status === statusFilter;
+      const matchStatus = statusFilter === "Semua" || t.status === statusFilter;
 
-    return matchSearch && matchStatus;
-  });
+      return matchSearch && matchStatus;
+    });
+  }, [transactions, search, statusFilter]);
 
   function addItemRow() {
     setSelectedItems((prev) => [

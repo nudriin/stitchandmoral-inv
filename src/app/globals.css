@@ -255,3 +255,18 @@ html[data-theme-style="neomorphism"].dark main textarea {
     size: auto;
   }
 }
+
+/* =========================================================================
+   PERFORMANCE & RENDERING OPTIMIZATIONS
+   ========================================================================= */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+

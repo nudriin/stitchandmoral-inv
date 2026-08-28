@@ -29,8 +29,9 @@ export function formatDateIndo(dateStr: string | null | undefined): string {
   }
 }
 
-export function getDriveThumbnail(url: string | null | undefined): string {
+export function getDriveThumbnail(url: string | null | undefined, width = 360): string {
   if (!url) return "";
   const match = String(url).match(/[-\w]{25,}/);
-  return match ? `https://drive.google.com/thumbnail?id=${match[0]}` : url;
+  return match ? `https://drive.google.com/thumbnail?id=${match[0]}&sz=w${width}` : url;
 }
+

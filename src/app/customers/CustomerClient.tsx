@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { getDriveThumbnail } from "@/lib/utils";
 import { Plus, Search, Users, Phone, MapPin, Edit2, Trash2, Loader2, MessageCircle, LayoutGrid, List, AtSign } from "lucide-react";
 import type { Customer } from "@/types/database";
@@ -21,13 +21,18 @@ export function CustomerClient({ initialCustomers }: Props) {
 
   const supabase = createClient();
 
-  const filtered = customers.filter(
-    (c) =>
-      c.nama.toLowerCase().includes(search.toLowerCase()) ||
-      c.whatsapp?.includes(search) ||
-      c.alamat?.toLowerCase().includes(search.toLowerCase()) ||
-      c.instagram?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return customers.filter(
+      (c) =>
+        !q ||
+        c.nama.toLowerCase().includes(q) ||
+        c.whatsapp?.includes(q) ||
+        c.alamat?.toLowerCase().includes(q) ||
+        c.instagram?.toLowerCase().includes(q)
+    );
+  }, [customers, search]);
+
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, field: "foto_customer_url" | "foto_pakai_jas_url") {
     const file = e.target.files?.[0];
@@ -190,13 +195,15 @@ export function CustomerClient({ initialCustomers }: Props) {
               return (
                 <div
                   key={c.id || c.customer_id}
-                  className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3"
+                  className="cv-auto bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-start gap-3">
                     {thumb ? (
                       <img
                         src={thumb}
                         alt={c.nama}
+                        loading="lazy"
+                        decoding="async"
                         className="w-12 h-12 object-cover rounded-full border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-950 shrink-0"
                       />
                     ) : (
@@ -301,14 +308,16 @@ export function CustomerClient({ initialCustomers }: Props) {
               <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
                 {filtered.length > 0 ? (
                   filtered.map((c) => {
-                    const thumb = getDriveThumbnail(c.foto_customer_url);
+                    const thumb = getDriveThumbnail(c.foto_customer_url, 140);
                     return (
-                      <tr key={c.id || c.customer_id} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/30 transition">
+                      <tr key={c.id || c.customer_id} className="cv-auto hover:bg-slate-50/80 dark:hover:bg-zinc-800/30 transition">
                         <td className="py-3 px-4">
                           {thumb ? (
                             <img
                               src={thumb}
                               alt={c.nama}
+                              loading="lazy"
+                              decoding="async"
                               className="w-10 h-10 object-cover rounded-full border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-950"
                             />
                           ) : (
