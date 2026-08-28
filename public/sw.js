@@ -1,6 +1,5 @@
-const CACHE_NAME = 'stitch-and-moral-v1';
+const CACHE_NAME = 'stitch-and-moral-v2';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
@@ -9,19 +8,19 @@ const STATIC_ASSETS = [
   '/favicon.png',
 ];
 
-// Install Event - Pre-cache core assets
+// Install Event - Pre-cache only app icons and manifest
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('Pre-caching partial failure:', err);
+        console.warn('Pre-caching partial warning:', err);
       });
     })
   );
   self.skipWaiting();
 });
 
-// Activate Event - Clean up obsolete caches
+// Activate Event - Clean up all old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -37,7 +36,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - Network First with Cache Fallback for navigation, Cache First for static assets
+// Fetch Event - Safe caching strategy (Never intercept Next.js chunks or development HMR)
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -47,19 +46,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Supabase or external API requests: Network only
-  if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/api/')) {
+  // Never cache Next.js internal chunks, Turbopack assets, APIs, or Supabase
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/api/') ||
+    url.hostname.includes('supabase.co')
+  ) {
     return;
   }
 
-  // Static Assets (Icons, Images, CSS, JS): Cache first with network fallback
-  if (
-    request.destination === 'image' ||
-    request.destination === 'style' ||
-    request.destination === 'script' ||
-    request.destination === 'font' ||
-    url.pathname.startsWith('/icons/')
-  ) {
+  // Static Icons and Assets: Cache first with network fallback
+  if (url.pathname.startsWith('/icons/') || url.pathname.endsWith('.png') || url.pathname.endsWith('.svg')) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
@@ -77,22 +74,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation / Page requests: Network First with Cache fallback
+  // Navigation: Network First with graceful offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response && response.status === 200) {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
-          }
           return response;
         })
         .catch(async () => {
           const cached = await caches.match(request);
           if (cached) return cached;
-          const rootCached = await caches.match('/');
-          if (rootCached) return rootCached;
           return new Response('Anda sedang offline. Buka kembali saat terhubung ke internet.', {
             status: 503,
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },

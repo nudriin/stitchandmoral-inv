@@ -52,7 +52,7 @@ body {
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Custom scrollbar */
@@ -74,6 +74,137 @@ body {
   background: rgba(150, 150, 150, 0.4);
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #27272a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Hide scrollbar utility for clean horizontal swipe tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mobile tap highlight reset */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================================================================
+   THEME STYLES: DEFAULT, GLASSMORPHISM, AND NEOMORPHISM
+   ========================================================================= */
+
+/* -------------------------------------------------------------------------
+   1. GLASSMORPHISM THEME (Frosted Glass & Luminous Glow)
+   ------------------------------------------------------------------------- */
+html[data-theme-style="glassmorphism"] body {
+  background: radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
+              radial-gradient(at 90% 90%, rgba(236, 72, 153, 0.10) 0px, transparent 50%),
+              radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.08) 0px, transparent 60%),
+              #f1f5f9 !important;
+  min-height: 100vh;
+}
+
+html[data-theme-style="glassmorphism"].dark body {
+  background: radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.20) 0px, transparent 50%),
+              radial-gradient(at 90% 90%, rgba(168, 85, 247, 0.18) 0px, transparent 50%),
+              radial-gradient(at 50% 50%, rgba(244, 63, 94, 0.10) 0px, transparent 60%),
+              #07080e !important;
+  min-height: 100vh;
+}
+
+/* Glass Panels in Main App */
+html[data-theme-style="glassmorphism"] main .bg-white,
+html[data-theme-style="glassmorphism"] main .bg-slate-50,
+html[data-theme-style="glassmorphism"] aside,
+html[data-theme-style="glassmorphism"] header,
+html[data-theme-style="glassmorphism"] nav.fixed {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08) !important;
+}
+
+html[data-theme-style="glassmorphism"].dark main .dark\:bg-zinc-900,
+html[data-theme-style="glassmorphism"].dark main .dark\:bg-zinc-900\/60,
+html[data-theme-style="glassmorphism"].dark main .dark\:bg-zinc-900\/70,
+html[data-theme-style="glassmorphism"].dark main .dark\:bg-zinc-950,
+html[data-theme-style="glassmorphism"].dark main .dark\:bg-zinc-950\/60,
+html[data-theme-style="glassmorphism"].dark aside,
+html[data-theme-style="glassmorphism"].dark header,
+html[data-theme-style="glassmorphism"].dark nav.fixed {
+  background: rgba(18, 18, 28, 0.62) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+/* -------------------------------------------------------------------------
+   2. NEOMORPHISM THEME (Soft 3D Embossed Bevels & Inset Fields)
+   ------------------------------------------------------------------------- */
+html[data-theme-style="neomorphism"] body {
+  background-color: #e2e8f0 !important;
+}
+
+html[data-theme-style="neomorphism"].dark body {
+  background-color: #13141f !important;
+}
+
+/* Neumorphic Extruded Cards & Sidebar (Light Mode) */
+html[data-theme-style="neomorphism"] main .bg-white,
+html[data-theme-style="neomorphism"] main .bg-slate-50,
+html[data-theme-style="neomorphism"] aside,
+html[data-theme-style="neomorphism"] header,
+html[data-theme-style="neomorphism"] nav.fixed {
+  background: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 7px 7px 16px #c4cbd6, -7px -7px 16px #ffffff !important;
+}
+
+/* Neumorphic Extruded Cards & Sidebar (Dark Mode) */
+html[data-theme-style="neomorphism"].dark main .dark\:bg-zinc-900,
+html[data-theme-style="neomorphism"].dark main .dark\:bg-zinc-900\/60,
+html[data-theme-style="neomorphism"].dark main .dark\:bg-zinc-900\/70,
+html[data-theme-style="neomorphism"].dark main .dark\:bg-zinc-950,
+html[data-theme-style="neomorphism"].dark main .dark\:bg-zinc-950\/60,
+html[data-theme-style="neomorphism"].dark aside,
+html[data-theme-style="neomorphism"].dark header,
+html[data-theme-style="neomorphism"].dark nav.fixed {
+  background: #13141f !important;
+  border-color: rgba(255, 255, 255, 0.03) !important;
+  box-shadow: 6px 6px 14px #0a0b10, -6px -6px 14px #1d1e2e !important;
+}
+
+/* Neumorphic Inset Form Controls (Light Mode) */
+html[data-theme-style="neomorphism"] main input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme-style="neomorphism"] main select,
+html[data-theme-style="neomorphism"] main textarea {
+  background-color: #e2e8f0 !important;
+  border-color: transparent !important;
+  box-shadow: inset 3px 3px 6px #c4cbd6, inset -3px -3px 6px #ffffff !important;
+}
+
+/* Neumorphic Inset Form Controls (Dark Mode) */
+html[data-theme-style="neomorphism"].dark main input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme-style="neomorphism"].dark main select,
+html[data-theme-style="neomorphism"].dark main textarea {
+  background-color: #13141f !important;
+  border-color: transparent !important;
+  box-shadow: inset 3px 3px 6px #0a0b10, inset -3px -3px 6px #1d1e2e !important;
+}
+
 /* Professional Print Styles */
 @media print {
   body {
@@ -83,7 +214,6 @@ body {
     margin: 0 !important;
   }
 
-  /* Hide everything on the page except the designated print container */
   aside,
   nav,
   header,
@@ -94,7 +224,6 @@ body {
     visibility: hidden !important;
   }
 
-  /* When printing receipt */
   body:has(#printableReceipt) * {
     visibility: hidden;
   }
@@ -126,30 +255,3 @@ body {
     size: auto;
   }
 }
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #27272a;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* Hide scrollbar utility for clean horizontal swipe tabs */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Mobile tap highlight reset */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-

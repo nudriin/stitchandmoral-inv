@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
+import { useThemeStyle } from "./ThemeStyleProvider";
+import { Palette } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
@@ -26,6 +28,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { themeStyle, setIsThemeModalOpen } = useThemeStyle();
 
   // Don't show sidebar on login page
   if (pathname === "/login") return null;
@@ -79,12 +82,27 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Footer Controls: Theme Toggle & Logout */}
-      <div className="pt-4 border-t border-slate-200 dark:border-zinc-800/80 space-y-1.5">
-        <ThemeToggle className="w-full justify-start" />
+      {/* Footer Controls: Theme Customizer, Theme Toggle & Logout */}
+      <div className="pt-4 border-t border-slate-200 dark:border-zinc-800/80 space-y-2">
+        <button
+          onClick={() => setIsThemeModalOpen(true)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-zinc-100 bg-slate-100/80 hover:bg-slate-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 transition cursor-pointer border border-slate-200 dark:border-zinc-700/60"
+          title="Pengaturan Tema (Default, Glassmorphism, Neomorphism)"
+        >
+          <div className="flex items-center gap-2.5">
+            <Palette className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Gaya Tema</span>
+          </div>
+          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700">
+            {themeStyle}
+          </span>
+        </button>
+
+        <ThemeToggle className="w-full justify-between" />
+
         <button
           onClick={() => logout()}
-          className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all cursor-pointer"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
         >
           <LogOut className="w-4 h-4" />
           <span>Keluar Akun</span>
