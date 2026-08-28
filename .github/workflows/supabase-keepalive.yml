@@ -1,0 +1,32 @@
+name: Supabase Keepalive Auto-Login
+
+on:
+  schedule:
+    # Berjalan otomatis setiap 5 hari sekali pada pukul 00:00 UTC (07:00 WIB)
+    - cron: '0 0 */5 * *'
+  workflow_dispatch: # Memungkinkan tombol "Run workflow" manual di GitHub Actions
+
+jobs:
+  keepalive:
+    name: Trigger Supabase Keepalive
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --no-audit --prefer-offline
+
+      - name: Execute Supabase Keepalive Script
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://apzyjwblfxikmbxwiard.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwenlqd2JsZnhpa21ieHdpYXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4ODk2NjcsImV4cCI6MjEwMzQ2NTY2N30.T6o7FuyapjxpRP4gPGE7DRDrBfsRSJ3Ora6mIKClnEY' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwenlqd2JsZnhpa21ieHdpYXJkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Nzg4OTY2NywiZXhwIjoyMTAzNDY1NjY3fQ.PO7birqD2iq2Xy5lxwp97v6lIJzG4MJtucCszjGSzkg' }}
+        run: node scripts/supabase-keepalive.js

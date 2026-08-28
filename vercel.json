@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/keepalive",
+      "schedule": "0 0 */5 * *"
+    },
+    {
+      "path": "/api/cron/check-returns",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}
