@@ -18,6 +18,7 @@ import {
   List,
   MessageCircle,
   Download,
+  FileText,
   ChevronDown,
   Check,
   Tag,
@@ -27,6 +28,7 @@ import {
 import type { Transaksi, Inventori, Customer, TransactionItem } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { generateReceiptCanvas } from "@/lib/receiptCanvas";
+import { generateReceiptPdf } from "@/lib/receiptPdf";
 
 function formatThousand(num: number): string {
   if (!num) return "";
@@ -261,6 +263,7 @@ export function TransaksiClient({
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [sharingWa, setSharingWa] = useState(false);
+  const [sharingPdf, setSharingPdf] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
 
   // Pay Modal State
@@ -672,6 +675,79 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
     const cleanPhone = tx.whatsapp.replace(/\D/g, "");
     const formattedPhone = cleanPhone.startsWith("0") ? `62${cleanPhone.slice(1)}` : cleanPhone.startsWith("62") ? cleanPhone : `62${cleanPhone}`;
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
+  }
+
+  async function sharePdfToWhatsApp(tx: Transaksi) {
+    if (!tx.whatsapp) {
+      alert("Nomor WhatsApp tidak tersedia.");
+      return;
+    }
+
+    const itemsText = tx.items
+      ?.map(
+        (i) => `  • ${i.namaJas} (${i.warna || "-"}/${i.ukuran || "-"}) x${i.jumlah} = ${formatRupiah(i.harga * i.jumlah)}`
+      )
+      .join("\n");
+
+    const message = `📄 *Struk Dokumen Sewa Jas (PDF) - Stitch & Moral*
+━━━━━━━━━━━━━━━━━━━
+No Transaksi : ${tx.kode_transaksi}
+Customer     : ${tx.nama_customer}
+Tgl Sewa     : ${formatDateIndo(tx.tanggal_sewa)}
+Tgl Kembali  : ${formatDateIndo(tx.tanggal_kembali)}
+━━━━━━━━━━━━━━━━━━━
+*Item yang Disewa:*
+${itemsText}
+━━━━━━━━━━━━━━━━━━━
+Subtotal  : ${formatRupiah(tx.subtotal)}
+Deposit   : ${formatRupiah(tx.deposit)}
+${tx.potongan > 0 ? `Potongan  : -${formatRupiah(tx.potongan)}\n` : ""}*Total Bayar : ${formatRupiah(tx.total_bayar)}*
+━━━━━━━━━━━━━━━━━━━
+Status Sewa       : ${tx.status}
+Status Pembayaran : *${tx.status_pembayaran}*
+Sudah Dibayar     : ${formatRupiah(tx.jumlah_dibayar)}
+${tx.sisa_pembayaran > 0 ? `Sisa Pembayaran   : ${formatRupiah(tx.sisa_pembayaran)}\n` : ""}
+Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
+
+    setSharingPdf(true);
+    try {
+      const doc = generateReceiptPdf(tx);
+      const blob = doc.output("blob");
+      const file = new File([blob], `Struk_${tx.kode_transaksi}.pdf`, { type: "application/pdf" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Struk Sewa Jas - ${tx.kode_transaksi}`,
+          text: message,
+        });
+        setSharingPdf(false);
+        return;
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        console.warn("Native PDF share failed or dismissed:", err);
+      }
+    } finally {
+      setSharingPdf(false);
+    }
+
+    // Fallback: Download PDF & open WhatsApp link
+    downloadPdfReceipt();
+    const cleanPhone = tx.whatsapp.replace(/\D/g, "");
+    const formattedPhone = cleanPhone.startsWith("0") ? `62${cleanPhone.slice(1)}` : cleanPhone.startsWith("62") ? cleanPhone : `62${cleanPhone}`;
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
+  }
+
+  function downloadPdfReceipt() {
+    if (!selectedTx) return;
+    try {
+      const doc = generateReceiptPdf(selectedTx);
+      doc.save(`Struk_${selectedTx.kode_transaksi || "Sewa"}.pdf`);
+    } catch (err) {
+      console.error("Gagal mendownload PDF struk:", err);
+      alert("Gagal mendownload PDF struk.");
+    }
   }
 
   function printReceipt(tx: Transaksi) {
@@ -1804,31 +1880,57 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
             </div>
 
             {/* Modal Action Buttons (Fixed at Bottom - Always Visible) */}
-            <div className="px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2 shrink-0 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.35rem))]">
-              <button
-                onClick={() => printReceipt(selectedTx)}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 transition shadow cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print Struk (Layout Full A4)</span>
-              </button>
-
-              <div className="flex items-center gap-2">
+            <div className="px-3.5 sm:px-6 py-3 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2 shrink-0 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.35rem))]">
+              {/* WhatsApp Share Actions */}
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={downloadReceiptImage}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  onClick={() => sharePdfToWhatsApp(selectedTx)}
+                  disabled={sharingPdf || sharingWa}
+                  className="py-2.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-60"
+                  title="Kirim dokumen PDF struk resmi ke WhatsApp"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Unduh Gambar PNG</span>
+                  <FileText className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{sharingPdf ? "Membuat PDF..." : "Kirim PDF ke WA"}</span>
                 </button>
 
                 <button
                   onClick={() => shareToWhatsApp(selectedTx)}
-                  disabled={sharingWa}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-60"
+                  disabled={sharingWa || sharingPdf}
+                  className="py-2.5 px-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-60"
+                  title="Kirim foto struk gambar PNG ke WhatsApp"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>{sharingWa ? "Menyiapkan Struk..." : "Kirim Struk + Gambar WA"}</span>
+                  <MessageCircle className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{sharingWa ? "Menyiapkan Foto..." : "Kirim Foto ke WA"}</span>
+                </button>
+              </div>
+
+              {/* Download & Print Actions */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={downloadPdfReceipt}
+                  className="py-2 px-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-[10px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                  title="Unduh file dokumen PDF"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Unduh PDF</span>
+                </button>
+
+                <button
+                  onClick={downloadReceiptImage}
+                  className="py-2 px-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-[10px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition cursor-pointer"
+                  title="Unduh file gambar PNG"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh PNG</span>
+                </button>
+
+                <button
+                  onClick={() => printReceipt(selectedTx)}
+                  className="py-2 px-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-[10px] sm:text-xs font-bold flex items-center justify-center gap-1 transition shadow-xs cursor-pointer"
+                  title="Cetak langsung struk"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
                 </button>
               </div>
             </div>
