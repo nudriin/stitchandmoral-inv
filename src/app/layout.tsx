@@ -1,16 +1,27 @@
 import type { Metadata, Viewport } from "next";
 import { Sidebar, BottomNav, MobileHeader } from "@/components/Navigation";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { PWAInstaller } from "@/components/PWAInstaller";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Stitch and Moral - Manajemen Sewa Jas",
-  description: "Sistem Manajemen Sewa Jas, Inventori, dan Keuangan",
+  description: "Sistem Manajemen Sewa Jas, Inventori, dan Keuangan Stitch & Moral",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Sewa Jas",
+    title: "Sewa Jas PKY",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -46,8 +57,10 @@ export default function RootLayout({
             </div>
           </div>
           <BottomNav />
+          <PWAInstaller />
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
