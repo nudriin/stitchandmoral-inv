@@ -7,22 +7,25 @@ import { PWAInstaller } from "@/components/PWAInstaller";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stitch and Moral - Manajemen Sewa Jas",
+  title: "Stitch & Moral - Manajemen Sewa Jas",
   description: "Sistem Manajemen Sewa Jas, Inventori, dan Keuangan Stitch & Moral",
-  manifest: "/manifest.json",
+  applicationName: "Stitch & Moral",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Sewa Jas PKY",
+    title: "Stitch & Moral",
+  },
+  formatDetection: {
+    telephone: false,
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
-      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/apple-touch-icon-precomposed.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };
@@ -42,39 +45,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Stitch & Moral" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="Stitch & Moral" />
-        <meta name="format-detection" content="telephone=no" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (("standalone" in window.navigator) && window.navigator.standalone) {
-                var noddy, remotes = false;
-                document.addEventListener('click', function(event) {
-                  noddy = event.target;
-                  while(noddy && noddy.nodeName !== "A" && noddy.nodeName !== "HTML") {
-                    noddy = noddy.parentNode;
-                  }
-                  if(noddy && noddy.nodeName === "A" && "href" in noddy && noddy.href.indexOf("http") !== -1 && (noddy.href.indexOf(document.location.host) !== -1 || remotes)) {
-                    event.preventDefault();
-                    document.location.href = noddy.href;
-                  }
-                }, false);
-              }
-            `,
-          }}
-        />
-      </head>
       <body className="antialiased bg-slate-50 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 min-h-screen">
         <ThemeProvider
           attribute="class"
@@ -101,5 +71,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-
