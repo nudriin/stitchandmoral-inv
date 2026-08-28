@@ -259,6 +259,7 @@ export function TransaksiClient({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [sharingWa, setSharingWa] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
 
   // Pay Modal State
@@ -607,7 +608,7 @@ export function TransaksiClient({
     }
   }
 
-  function shareToWhatsApp(tx: Transaksi) {
+  async function shareToWhatsApp(tx: Transaksi) {
     if (!tx.whatsapp) {
       alert("Nomor WhatsApp tidak tersedia.");
       return;
@@ -639,7 +640,37 @@ Sudah Dibayar     : ${formatRupiah(tx.jumlah_dibayar)}
 ${tx.sisa_pembayaran > 0 ? `Sisa Pembayaran   : ${formatRupiah(tx.sisa_pembayaran)}\n` : ""}
 Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
 
-    window.open(`https://wa.me/${tx.whatsapp}?text=${encodeURIComponent(message)}`, "_blank");
+    setSharingWa(true);
+    try {
+      const el = document.getElementById("printableReceipt");
+      if (el) {
+        const html2canvas = (await import("html2canvas")).default;
+        const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff" });
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+        
+        if (blob) {
+          const file = new File([blob], `Struk_${tx.kode_transaksi}.png`, { type: "image/png" });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `Struk Sewa - ${tx.kode_transaksi}`,
+              text: message,
+            });
+            setSharingWa(false);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Web Share API not supported or user cancelled:", err);
+    } finally {
+      setSharingWa(false);
+    }
+
+    const cleanPhone = tx.whatsapp.replace(/\D/g, "");
+    const formattedPhone = cleanPhone.startsWith("0") ? `62${cleanPhone.slice(1)}` : cleanPhone.startsWith("62") ? cleanPhone : `62${cleanPhone}`;
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
   }
 
   function printReceipt(tx: Transaksi) {
@@ -1223,10 +1254,10 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
 
       {/* Modal: Transaksi Baru */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[calc(100dvh-4rem)] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
               <h2 className="font-bold text-slate-900 dark:text-zinc-100 text-base flex items-center gap-2">
                 <Plus className="w-5 h-5 text-indigo-500" />
                 Buat Transaksi Sewa Baru
@@ -1570,8 +1601,8 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
 
       {/* Modal: Update Pembayaran */}
       {payModalOpen && selectedTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md max-h-[calc(100dvh-4rem)] sm:max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-2xl overflow-y-auto">
             <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100 mb-4">
               Update Pembayaran — {selectedTx.kode_transaksi}
             </h2>
@@ -1645,10 +1676,10 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
 
       {/* Modal: Struk & PDF (Fixed Viewport, Scrollable Body, Persistent Buttons) */}
       {receiptModalOpen && selectedTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl max-h-[calc(100dvh-5rem)] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header (Fixed) */}
-            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <div className="flex justify-between items-center px-4 sm:px-6 py-3.5 border-b border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
               <h2 className="font-bold text-slate-900 dark:text-zinc-100 text-sm flex items-center gap-2">
                 <ReceiptText className="w-4 h-4 text-indigo-500" />
                 Struk Transaksi Sewa
@@ -1662,19 +1693,19 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
             </div>
 
             {/* Scrollable Receipt Body */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 dark:bg-zinc-950/60">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-50 dark:bg-zinc-950/60">
               <div
                 id="printableReceipt"
-                className="bg-white text-zinc-950 p-6 sm:p-8 rounded-2xl border border-slate-200 font-sans shadow-sm text-xs space-y-4"
+                className="bg-white text-zinc-950 p-5 sm:p-8 rounded-2xl border border-slate-200 font-sans shadow-sm text-xs space-y-4"
               >
                 <div>
-                  <h1 className="text-xl font-bold text-center text-slate-900 tracking-tight">
+                  <h1 className="text-lg sm:text-xl font-bold text-center text-slate-900 tracking-tight">
                     Stitch and Moral - Sewa Jas PKY
                   </h1>
                   <p className="text-center text-slate-500 text-xs mt-0.5">Struk Bukti Sewa & Transaksi</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-slate-700 leading-relaxed border-y border-dashed border-slate-200 py-3">
+                <div className="grid grid-cols-2 gap-2 text-slate-700 leading-relaxed border-y border-dashed border-slate-200 py-3 text-[11px] sm:text-xs">
                   <div>
                     <p>No: <b>{selectedTx.kode_transaksi}</b></p>
                     <p>Customer: <b>{selectedTx.nama_customer}</b></p>
@@ -1687,7 +1718,7 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
                   </div>
                 </div>
 
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse text-[11px] sm:text-xs">
                   <thead>
                     <tr className="border-b-2 border-slate-300 text-slate-800 font-bold">
                       <th className="py-2.5 px-1">Item / Varian</th>
@@ -1699,19 +1730,19 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
                   <tbody className="divide-y divide-slate-100">
                     {selectedTx.items?.map((item, i) => (
                       <tr key={i} className="align-top">
-                        <td className="py-2.5 px-1">
+                        <td className="py-2 px-1">
                           <b>{item.namaJas}</b>
-                          <p className="text-[11px] text-slate-500">{item.warna || "-"} / {item.ukuran || "-"}</p>
+                          <p className="text-[10px] text-slate-500">{item.warna || "-"} / {item.ukuran || "-"}</p>
                         </td>
-                        <td className="py-2.5 px-1 text-right font-mono">{item.jumlah}</td>
-                        <td className="py-2.5 px-1 text-right font-mono">{formatRupiah(item.harga)}</td>
-                        <td className="py-2.5 px-1 text-right font-mono font-bold">{formatRupiah(item.harga * item.jumlah)}</td>
+                        <td className="py-2 px-1 text-right font-mono">{item.jumlah}</td>
+                        <td className="py-2 px-1 text-right font-mono">{formatRupiah(item.harga)}</td>
+                        <td className="py-2 px-1 text-right font-mono font-bold">{formatRupiah(item.harga * item.jumlah)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                <div className="space-y-1.5 text-slate-700 leading-relaxed border-t border-slate-200 pt-3">
+                <div className="space-y-1.5 text-slate-700 leading-relaxed border-t border-slate-200 pt-3 text-[11px] sm:text-xs">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
                     <span className="font-mono font-medium">{formatRupiah(selectedTx.subtotal)}</span>
@@ -1735,7 +1766,7 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-sm font-bold text-slate-900 border-y border-slate-200 py-1.5 my-1">
+                  <div className="flex justify-between text-xs sm:text-sm font-bold text-slate-900 border-y border-slate-200 py-1.5 my-1">
                     <span>TOTAL BAYAR:</span>
                     <span className="font-mono text-emerald-600">{formatRupiah(selectedTx.total_bayar)}</span>
                   </div>
@@ -1764,20 +1795,20 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
                   )}
                 </div>
 
-                <div className="text-center pt-4 border-t border-dashed border-slate-200 text-[11px] text-slate-500">
+                <div className="text-center pt-3 border-t border-dashed border-slate-200 text-[10px] text-slate-500">
                   Terima kasih sudah menyewa di Stitch and Moral. Simpan struk ini sebagai bukti transaksi.
                 </div>
               </div>
             </div>
 
             {/* Modal Action Buttons (Fixed at Bottom - Always Visible) */}
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+            <div className="px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2 shrink-0 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.35rem))]">
               <button
                 onClick={() => printReceipt(selectedTx)}
                 className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold flex items-center justify-center gap-2 transition shadow cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print Struk (Layout Full A4 - 1 Halaman)</span>
+                <span>Print Struk (Layout Full A4)</span>
               </button>
 
               <div className="flex items-center gap-2">
@@ -1786,15 +1817,16 @@ Terima kasih sudah mempercayakan sewa jas di Stitch & Moral! 🙏`;
                   className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Simpan Gambar PNG</span>
+                  <span>Unduh Gambar PNG</span>
                 </button>
 
                 <button
                   onClick={() => shareToWhatsApp(selectedTx)}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+                  disabled={sharingWa}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm disabled:opacity-60"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Kirim Teks WA</span>
+                  <span>{sharingWa ? "Menyiapkan Struk..." : "Kirim Struk + Gambar WA"}</span>
                 </button>
               </div>
             </div>
