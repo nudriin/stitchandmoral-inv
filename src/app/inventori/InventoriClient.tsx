@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { formatRupiah, getDriveThumbnail } from "@/lib/utils";
-import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List } from "lucide-react";
+import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List, X } from "lucide-react";
 import type { Inventori } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 
@@ -435,10 +435,11 @@ export function InventoriClient({ initialItems }: Props) {
                 {editingItem?.id ? "Edit Barang Inventori" : "Tambah Barang Baru"}
               </h2>
               <button
+                type="button"
                 onClick={() => setModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm cursor-pointer transition"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

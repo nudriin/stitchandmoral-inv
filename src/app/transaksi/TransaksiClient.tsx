@@ -24,6 +24,12 @@ import {
   Tag,
   Trash2,
   RotateCcw,
+  Eye,
+  Edit2,
+  ArrowUpDown,
+  X,
+  AlertCircle,
+  MapPin,
 } from "lucide-react";
 import type { Transaksi, Inventori, Customer, TransactionItem } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
@@ -178,9 +184,9 @@ function SearchableItemPicker({
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="text-slate-400 hover:text-slate-600 text-xs px-1"
+                className="text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer flex items-center"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -257,6 +263,7 @@ export function TransaksiClient({
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Semua");
+  const [sortBy, setSortBy] = useState<string>("date-desc");
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -265,6 +272,32 @@ export function TransaksiClient({
   const [sharingWa, setSharingWa] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
+
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedDetailTx, setSelectedDetailTx] = useState<Transaksi | null>(null);
+
+  // Edit Modal State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaksi | null>(null);
+  const [editCustName, setEditCustName] = useState("");
+  const [editCustWa, setEditCustWa] = useState("");
+  const [editTanggalSewa, setEditTanggalSewa] = useState("");
+  const [editTanggalKembali, setEditTanggalKembali] = useState("");
+  const [editPotongan, setEditPotongan] = useState(0);
+  const [editDeposit, setEditDeposit] = useState(0);
+  const [editDenda, setEditDenda] = useState(0);
+  const [editJumlahDibayar, setEditJumlahDibayar] = useState(0);
+  const [editStatusPembayaran, setEditStatusPembayaran] = useState("Lunas");
+  const [editStatus, setEditStatus] = useState("Sedang Disewa");
+  const [editMetodePembayaran, setEditMetodePembayaran] = useState("Transfer");
+  const [editCatatan, setEditCatatan] = useState("");
+  const [editSelectedItems, setEditSelectedItems] = useState<TransactionItem[]>([]);
+
+  // Delete Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [txToDelete, setTxToDelete] = useState<Transaksi | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Pay Modal State
   const [payAmount, setPayAmount] = useState(0);
@@ -301,9 +334,17 @@ export function TransaksiClient({
   const totalBayar = Math.max(0, subtotal - potongan);
   const sisaPembayaran = Math.max(0, totalBayar - jumlahDibayar);
 
+  // Calculations for edit transaction
+  const editSubtotal = useMemo(
+    () => editSelectedItems.reduce((sum, item) => sum + item.harga * item.jumlah, 0),
+    [editSelectedItems]
+  );
+  const editTotalBayar = Math.max(0, editSubtotal - editPotongan) + editDenda;
+  const editSisaPembayaran = Math.max(0, editTotalBayar - editJumlahDibayar);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return transactions.filter((t) => {
+    const result = transactions.filter((t) => {
       const matchSearch =
         !q ||
         t.kode_transaksi.toLowerCase().includes(q) ||
@@ -315,7 +356,29 @@ export function TransaksiClient({
 
       return matchSearch && matchStatus;
     });
-  }, [transactions, search, statusFilter]);
+
+    return result.sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":
+          return a.nama_customer.localeCompare(b.nama_customer);
+        case "name-desc":
+          return b.nama_customer.localeCompare(a.nama_customer);
+        case "total-desc":
+          return Number(b.total_bayar || 0) - Number(a.total_bayar || 0);
+        case "total-asc":
+          return Number(a.total_bayar || 0) - Number(b.total_bayar || 0);
+        case "return-asc":
+          return String(a.tanggal_kembali || "").localeCompare(String(b.tanggal_kembali || ""));
+        case "date-asc":
+          return String(a.tanggal_sewa || "").localeCompare(String(b.tanggal_sewa || ""));
+        case "unpaid-desc":
+          return Number(b.sisa_pembayaran || 0) - Number(a.sisa_pembayaran || 0);
+        case "date-desc":
+        default:
+          return String(b.tanggal_sewa || "").localeCompare(String(a.tanggal_sewa || ""));
+      }
+    });
+  }, [transactions, search, statusFilter, sortBy]);
 
   function addItemRow() {
     setSelectedItems((prev) => [
@@ -583,6 +646,225 @@ export function TransaksiClient({
     }
 
     setTransactions((prev) => prev.map((t) => (t.id === tx.id ? (data as Transaksi) : t)));
+  }
+
+  function handleOpenDetail(tx: Transaksi) {
+    setSelectedDetailTx(tx);
+    setDetailModalOpen(true);
+  }
+
+  function handleOpenEdit(tx: Transaksi) {
+    setEditingTx(tx);
+    setEditCustName(tx.nama_customer || "");
+    setEditCustWa(tx.whatsapp || "");
+    setEditTanggalSewa(tx.tanggal_sewa || "");
+    setEditTanggalKembali(tx.tanggal_kembali || "");
+    setEditPotongan(Number(tx.potongan) || 0);
+    setEditDeposit(Number(tx.deposit) || 0);
+    setEditDenda(Number(tx.denda) || 0);
+    setEditJumlahDibayar(Number(tx.jumlah_dibayar) || 0);
+    setEditStatusPembayaran(tx.status_pembayaran || "Lunas");
+    setEditStatus(tx.status || "Sedang Disewa");
+    setEditMetodePembayaran(tx.metode_pembayaran || "Transfer");
+    setEditCatatan(tx.catatan || "");
+    setEditSelectedItems(
+      Array.isArray(tx.items) && tx.items.length > 0
+        ? tx.items.map((i) => ({ ...i }))
+        : [{ kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 }]
+    );
+    setEditModalOpen(true);
+  }
+
+  function addEditItemRow() {
+    setEditSelectedItems((prev) => [
+      ...prev,
+      { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 },
+    ]);
+  }
+
+  function removeEditItemRow(index: number) {
+    if (editSelectedItems.length <= 1) {
+      setEditSelectedItems([
+        { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 },
+      ]);
+      return;
+    }
+    setEditSelectedItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleEditItemChange(index: number, kodeJas: string) {
+    const inv = inventory.find((i) => i.kode_jas === kodeJas);
+    if (!inv) return;
+
+    setEditSelectedItems((prev) => {
+      const next = [...prev];
+      next[index] = {
+        kodeJas: inv.kode_jas,
+        namaJas: inv.nama_jas,
+        jenisJas: inv.jenis_jas,
+        warna: inv.warna,
+        ukuran: inv.ukuran,
+        jumlah: 1,
+        harga: Number(inv.harga_default || 0),
+      };
+      return next;
+    });
+  }
+
+  function updateEditItemQtyOrPrice(index: number, field: "jumlah" | "harga", val: number) {
+    setEditSelectedItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: val };
+      return next;
+    });
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingTx) return;
+    setSaving(true);
+
+    try {
+      const validItems = editSelectedItems.filter((i) => i.kodeJas && i.jumlah > 0);
+      if (validItems.length === 0) {
+        alert("Pilih minimal 1 item sewa.");
+        setSaving(false);
+        return;
+      }
+
+      const totalItemsCount = validItems.reduce((acc, i) => acc + Number(i.jumlah), 0);
+      const sub = validItems.reduce((sum, item) => sum + item.harga * item.jumlah, 0);
+      const total = Math.max(0, sub - editPotongan) + editDenda;
+      const sisa = Math.max(0, total - editJumlahDibayar);
+
+      let cleanWa = editCustWa.replace(/\D/g, "");
+      if (cleanWa.startsWith("0")) cleanWa = "62" + cleanWa.slice(1);
+      else if (!cleanWa.startsWith("62") && cleanWa.length > 5) cleanWa = "62" + cleanWa;
+
+      const payload = {
+        nama_customer: editCustName,
+        whatsapp: cleanWa,
+        tanggal_sewa: editTanggalSewa,
+        tanggal_kembali: editTanggalKembali,
+        items: validItems,
+        jumlah_total: totalItemsCount,
+        subtotal: sub,
+        potongan: editPotongan,
+        deposit: editDeposit,
+        denda: editDenda,
+        total_bayar: total,
+        jumlah_dibayar: editJumlahDibayar,
+        sisa_pembayaran: sisa,
+        status_pembayaran: editStatusPembayaran,
+        status: editStatus,
+        metode_pembayaran: editMetodePembayaran,
+        catatan: editCatatan,
+      };
+
+      const { data, error } = await supabase
+        .from("transaksi")
+        .update(payload)
+        .eq("id", editingTx.id)
+        .select()
+        .single();
+
+      if (error) {
+        alert("Gagal mengupdate transaksi: " + error.message);
+        setSaving(false);
+        return;
+      }
+
+      // Sync inventory stock if status changed
+      const oldActive = ["Sedang Disewa", "Booking", "Terlambat"].includes(editingTx.status);
+      const newActive = ["Sedang Disewa", "Booking", "Terlambat"].includes(editStatus);
+
+      if (oldActive && !newActive) {
+        // Status changed from active to finished/cancelled -> return all old items to stock
+        for (const itm of editingTx.items || []) {
+          const inv = inventory.find((i) => i.kode_jas === itm.kodeJas);
+          if (inv) {
+            await supabase
+              .from("inventori")
+              .update({
+                stok_tersedia: inv.stok_tersedia + itm.jumlah,
+                stok_disewa: Math.max(0, inv.stok_disewa - itm.jumlah),
+              })
+              .eq("id", inv.id);
+          }
+        }
+      } else if (!oldActive && newActive) {
+        // Status changed from finished to active -> deduct new items from stock
+        for (const itm of validItems) {
+          const inv = inventory.find((i) => i.kode_jas === itm.kodeJas);
+          if (inv) {
+            await supabase
+              .from("inventori")
+              .update({
+                stok_tersedia: Math.max(0, inv.stok_tersedia - itm.jumlah),
+                stok_disewa: inv.stok_disewa + itm.jumlah,
+              })
+              .eq("id", inv.id);
+          }
+        }
+      }
+
+      setTransactions((prev) => prev.map((t) => (t.id === editingTx.id ? (data as Transaksi) : t)));
+      if (selectedDetailTx && selectedDetailTx.id === editingTx.id) {
+        setSelectedDetailTx(data as Transaksi);
+      }
+      setEditModalOpen(false);
+    } catch (err: any) {
+      alert("Terjadi kesalahan: " + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleOpenDelete(tx: Transaksi) {
+    setTxToDelete(tx);
+    setDeleteModalOpen(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!txToDelete) return;
+    setDeleting(true);
+
+    try {
+      // Revert stock if transaction was active/rented
+      if (["Sedang Disewa", "Terlambat"].includes(txToDelete.status) && Array.isArray(txToDelete.items)) {
+        for (const itm of txToDelete.items) {
+          const inv = inventory.find((i) => i.kode_jas === itm.kodeJas);
+          if (inv) {
+            await supabase
+              .from("inventori")
+              .update({
+                stok_tersedia: inv.stok_tersedia + itm.jumlah,
+                stok_disewa: Math.max(0, inv.stok_disewa - itm.jumlah),
+              })
+              .eq("id", inv.id);
+          }
+        }
+      }
+
+      const { error } = await supabase.from("transaksi").delete().eq("id", txToDelete.id);
+      if (error) {
+        alert("Gagal menghapus transaksi: " + error.message);
+        setDeleting(false);
+        return;
+      }
+
+      setTransactions((prev) => prev.filter((t) => t.id !== txToDelete.id));
+      if (selectedDetailTx && selectedDetailTx.id === txToDelete.id) {
+        setDetailModalOpen(false);
+        setSelectedDetailTx(null);
+      }
+      setDeleteModalOpen(false);
+      setTxToDelete(null);
+    } catch (err: any) {
+      alert("Terjadi kesalahan saat menghapus: " + (err.message || err));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleUpdatePayment(e: React.FormEvent<HTMLFormElement>) {
@@ -1079,26 +1361,50 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
         </div>
       </div>
 
-      {/* Search & Status Filters */}
-      <div className="flex flex-col md:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
-          <input
-            type="text"
-            placeholder="Cari transaksi, customer, nomor WA..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 focus:border-slate-400 dark:focus:border-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none shadow-sm"
-          />
+      {/* Search, Sorting & Status Filters */}
+      <div className="space-y-2.5">
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Cari transaksi, customer, nomor WA, jas..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 focus:border-slate-400 dark:focus:border-zinc-500 rounded-xl py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 outline-none shadow-xs"
+            />
+          </div>
+
+          {/* Sorting Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full sm:w-auto appearance-none bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-bold py-2.5 px-3.5 pr-8 rounded-xl shadow-xs focus:ring-2 focus:ring-slate-900 focus:outline-none cursor-pointer"
+            >
+              <option value="date-desc">Tanggal Sewa: Terbaru</option>
+              <option value="date-asc">Tanggal Sewa: Terlama</option>
+              <option value="return-asc">Tanggal Kembali: Terdekat</option>
+              <option value="name-asc">Nama Customer: A - Z</option>
+              <option value="name-desc">Nama Customer: Z - A</option>
+              <option value="total-desc">Total Bayar: Tertinggi</option>
+              <option value="total-asc">Total Bayar: Terendah</option>
+              <option value="unpaid-desc">Sisa Tagihan: Belum Lunas</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+            </div>
+          </div>
         </div>
 
+        {/* Status Filters */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
           {["Semua", "Sedang Disewa", "Booking", "Selesai", "Terlambat", "Dibatalkan"].map(
             (st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
                   statusFilter === st
                     ? "bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow"
                     : "bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
@@ -1118,7 +1424,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
             filtered.map((t) => (
               <div
                 key={t.id || t.kode_transaksi}
-                className="bg-white dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800/90 rounded-2xl p-5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-zinc-700 transition shadow-sm space-y-4"
+                className="bg-white dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800/90 rounded-2xl p-4 sm:p-5 flex flex-col justify-between hover:border-slate-300 dark:hover:border-zinc-700 transition shadow-sm space-y-4"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
@@ -1197,50 +1503,69 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 </div>
 
                 {/* Actions */}
-                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800/80 flex flex-wrap items-center gap-1.5">
-                  <button
-                    onClick={() => {
-                      setSelectedTx(t);
-                      setReceiptModalOpen(true);
-                    }}
-                    className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                    title="Lihat Struk"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Struk</span>
-                  </button>
-
-                  <button
-                    onClick={() => shareToWhatsApp(t)}
-                    className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                    title="Kirim Struk WA"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WA</span>
-                  </button>
-
-                  {t.status === "Booking" && (
+                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => handleConfirmPickup(t)}
-                      className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      onClick={() => handleOpenDetail(t)}
+                      className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      title="Lihat Detail Transaksi"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Ambil</span>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Detail</span>
                     </button>
-                  )}
 
-                  {["Sedang Disewa", "Terlambat"].includes(t.status) && (
                     <button
-                      onClick={() => handleFinishTransaction(t)}
-                      className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      onClick={() => handleOpenEdit(t)}
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      title="Edit Transaksi (Penyesuaian Data)"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Selesai</span>
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
                     </button>
-                  )}
 
-                  {!["Selesai", "Dibatalkan"].includes(t.status) && (
-                    <>
+                    <button
+                      onClick={() => {
+                        setSelectedTx(t);
+                        setReceiptModalOpen(true);
+                      }}
+                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      title="Lihat Struk"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Struk</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => shareToWhatsApp(t)}
+                      className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      title="Kirim Struk WA"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </button>
+
+                    {t.status === "Booking" && (
+                      <button
+                        onClick={() => handleConfirmPickup(t)}
+                        className="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Ambil</span>
+                      </button>
+                    )}
+
+                    {["Sedang Disewa", "Terlambat"].includes(t.status) && (
+                      <button
+                        onClick={() => handleFinishTransaction(t)}
+                        className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Selesai</span>
+                      </button>
+                    )}
+
+                    {t.sisa_pembayaran > 0 && !["Selesai", "Dibatalkan"].includes(t.status) && (
                       <button
                         onClick={() => {
                           setSelectedTx(t);
@@ -1253,14 +1578,16 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                         <DollarSign className="w-3.5 h-3.5" />
                         <span>Bayar</span>
                       </button>
-                      <button
-                        onClick={() => handleCancelTransaction(t)}
-                        className="p-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 text-xs font-semibold cursor-pointer"
-                      >
-                        ✕
-                      </button>
-                    </>
-                  )}
+                    )}
+
+                    <button
+                      onClick={() => handleOpenDelete(t)}
+                      className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-xs font-semibold cursor-pointer"
+                      title="Hapus Transaksi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -1326,6 +1653,20 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => handleOpenDetail(t)}
+                            className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-400 dark:hover:bg-indigo-900 cursor-pointer"
+                            title="Detail Transaksi"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(t)}
+                            className="p-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
+                            title="Edit Transaksi"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => {
                               setSelectedTx(t);
                               setReceiptModalOpen(true);
@@ -1341,6 +1682,13 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                             title="Kirim WA"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenDelete(t)}
+                            className="p-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950 dark:text-rose-400 dark:hover:bg-rose-900 cursor-pointer"
+                            title="Hapus Transaksi"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -1370,10 +1718,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 Buat Transaksi Sewa Baru
               </h2>
               <button
+                type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100 flex items-center justify-center text-sm cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100 flex items-center justify-center cursor-pointer transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -1678,7 +2027,9 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                   ) : (
                     <div className="flex justify-between text-emerald-600 font-bold">
                       <span>Status Pembayaran:</span>
-                      <span>LUNAS ✓</span>
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> LUNAS
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1710,9 +2061,18 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
       {payModalOpen && selectedTx && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md max-h-[calc(100dvh-4rem)] sm:max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-2xl overflow-y-auto">
-            <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100 mb-4">
-              Update Pembayaran — {selectedTx.kode_transaksi}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">
+                Update Pembayaran — {selectedTx.kode_transaksi}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPayModalOpen(false)}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
             <div className="bg-slate-50 dark:bg-zinc-950/60 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 text-xs space-y-2 mb-4 text-slate-700 dark:text-zinc-300">
               <div className="flex justify-between">
@@ -1792,10 +2152,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 Struk Transaksi Sewa
               </h2>
               <button
+                type="button"
                 onClick={() => setReceiptModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100 flex items-center justify-center text-sm cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100 flex items-center justify-center cursor-pointer transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -2000,6 +2361,628 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                   <span>Print</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL TRANSAKSI MODAL */}
+      {detailModalOpen && selectedDetailTx && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-950/40 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <ReceiptText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100 font-mono">
+                      {selectedDetailTx.kode_transaksi}
+                    </h2>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        selectedDetailTx.status === "Selesai"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300"
+                          : selectedDetailTx.status === "Sedang Disewa"
+                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300"
+                          : selectedDetailTx.status === "Booking"
+                          ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300"
+                          : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300"
+                      }`}
+                    >
+                      {selectedDetailTx.status}
+                    </span>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        selectedDetailTx.status_pembayaran === "Lunas"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                          : "bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+                      }`}
+                    >
+                      {selectedDetailTx.status_pembayaran}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500">
+                    Dibuat: {selectedDetailTx.created_at ? new Date(selectedDetailTx.created_at).toLocaleString("id-ID") : "-"}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setDetailModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+              {/* Customer & Period Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="bg-slate-50 dark:bg-zinc-950/60 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-4 text-xs space-y-2">
+                  <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
+                    Informasi Pelanggan
+                  </span>
+                  <p className="font-bold text-sm text-slate-900 dark:text-zinc-100">
+                    {selectedDetailTx.nama_customer}
+                  </p>
+                  {selectedDetailTx.whatsapp && (
+                    <a
+                      href={`https://wa.me/${selectedDetailTx.whatsapp.replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1.5"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      +{selectedDetailTx.whatsapp}
+                    </a>
+                  )}
+                  {(() => {
+                    const cust = customers.find(
+                      (c) => c.customer_id === selectedDetailTx.customer_id || c.nama === selectedDetailTx.nama_customer
+                    );
+                    return cust?.alamat ? (
+                      <p className="text-slate-600 dark:text-zinc-400 text-[11.5px] flex items-start gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                        <span>{cust.alamat}</span>
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+
+                <div className="bg-slate-50 dark:bg-zinc-950/60 border border-slate-200/80 dark:border-zinc-800/80 rounded-2xl p-4 text-xs space-y-2">
+                  <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
+                    Periode & Durasi Sewa
+                  </span>
+                  <div className="space-y-1 text-slate-700 dark:text-zinc-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Mulai Sewa:</span>
+                      <span className="font-semibold text-slate-900 dark:text-zinc-100">
+                        {formatDateIndo(selectedDetailTx.tanggal_sewa)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Wajib Kembali:</span>
+                      <span className="font-semibold text-slate-900 dark:text-zinc-100">
+                        {formatDateIndo(selectedDetailTx.tanggal_kembali)}
+                      </span>
+                    </div>
+                    {selectedDetailTx.tanggal_dikembalikan && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400 pt-1 border-t border-slate-200 dark:border-zinc-800">
+                        <span>Tgl Dikembalikan:</span>
+                        <span className="font-semibold">
+                          {formatDateIndo(selectedDetailTx.tanggal_dikembalikan)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Rented Items */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
+                  Daftar Jas & Aksesoris ({selectedDetailTx.items?.length || 0} Item)
+                </h3>
+                <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-zinc-950 text-slate-500 font-semibold border-b border-slate-200 dark:border-zinc-800">
+                      <tr>
+                        <th className="py-2.5 px-3.5">Nama Item</th>
+                        <th className="py-2.5 px-3.5">Varian</th>
+                        <th className="py-2.5 px-3.5 text-center">Qty</th>
+                        <th className="py-2.5 px-3.5 text-right">Harga</th>
+                        <th className="py-2.5 px-3.5 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                      {selectedDetailTx.items?.map((itm, i) => (
+                        <tr key={i} className="text-slate-800 dark:text-zinc-200">
+                          <td className="py-2.5 px-3.5 font-semibold">
+                            {itm.namaJas}
+                            <span className="text-[10px] text-slate-400 block font-mono">
+                              {itm.kodeJas}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-slate-600 dark:text-zinc-400">
+                            {itm.warna || "-"} / {itm.ukuran || "-"}
+                          </td>
+                          <td className="py-2.5 px-3.5 text-center font-mono font-bold">
+                            {itm.jumlah}
+                          </td>
+                          <td className="py-2.5 px-3.5 text-right font-mono">
+                            {formatRupiah(itm.harga)}
+                          </td>
+                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">
+                            {formatRupiah(itm.harga * itm.jumlah)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div className="bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 text-xs space-y-2">
+                <span className="text-slate-400 block text-[11px] font-semibold uppercase tracking-wider">
+                  Rincian Pembayaran
+                </span>
+                <div className="space-y-1.5 text-slate-700 dark:text-zinc-300">
+                  <div className="flex justify-between">
+                    <span>Subtotal Biaya Sewa:</span>
+                    <span className="font-mono font-semibold">
+                      {formatRupiah(selectedDetailTx.subtotal || selectedDetailTx.total_bayar)}
+                    </span>
+                  </div>
+                  {Number(selectedDetailTx.potongan || 0) > 0 && (
+                    <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                      <span>Potongan / Diskon:</span>
+                      <span className="font-mono">-{formatRupiah(selectedDetailTx.potongan)}</span>
+                    </div>
+                  )}
+                  {Number(selectedDetailTx.deposit || 0) > 0 && (
+                    <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                      <span>Deposit Jaminan:</span>
+                      <span className="font-mono">+{formatRupiah(selectedDetailTx.deposit)}</span>
+                    </div>
+                  )}
+                  {Number(selectedDetailTx.denda || 0) > 0 && (
+                    <div className="flex justify-between text-rose-600 dark:text-rose-400 font-semibold">
+                      <span>Denda Keterlambatan:</span>
+                      <span className="font-mono">+{formatRupiah(selectedDetailTx.denda)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-zinc-100 pt-2 border-t border-slate-200 dark:border-zinc-800">
+                    <span>TOTAL TAGIHAN:</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                      {formatRupiah(selectedDetailTx.total_bayar)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Jumlah Sudah Dibayar:</span>
+                    <span className="font-mono font-medium">
+                      {formatRupiah(selectedDetailTx.jumlah_dibayar || 0)} ({selectedDetailTx.metode_pembayaran || "Transfer"})
+                    </span>
+                  </div>
+                  {Number(selectedDetailTx.sisa_pembayaran || 0) > 0 ? (
+                    <div className="flex justify-between font-bold text-rose-600 dark:text-rose-400">
+                      <span>Sisa Belum Dibayar:</span>
+                      <span className="font-mono">{formatRupiah(selectedDetailTx.sisa_pembayaran)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
+                      <span>Status Pembayaran:</span>
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> LUNAS
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedDetailTx.catatan && (
+                <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 p-3 rounded-2xl text-xs">
+                  <span className="text-amber-800 dark:text-amber-300 font-bold block text-[10.5px]">
+                    Catatan Transaksi:
+                  </span>
+                  <p className="text-amber-900 dark:text-amber-200 mt-0.5">{selectedDetailTx.catatan}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/40 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    const tx = selectedDetailTx;
+                    setDetailModalOpen(false);
+                    handleOpenEdit(tx);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit Transaksi</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedTx(selectedDetailTx);
+                    setReceiptModalOpen(true);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Struk</span>
+                </button>
+
+                <button
+                  onClick={() => sharePdfToWhatsApp(selectedDetailTx)}
+                  className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>PDF WA</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const tx = selectedDetailTx;
+                    handleOpenDelete(tx);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus</span>
+                </button>
+
+                <button
+                  onClick={() => setDetailModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 font-bold text-xs transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT TRANSAKSI MODAL (Supports all statuses, including Selesai) */}
+      {editModalOpen && editingTx && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 shrink-0">
+              <div>
+                <h2 className="font-bold text-slate-900 dark:text-zinc-100 text-base flex items-center gap-2">
+                  <Edit2 className="w-4 h-4 text-indigo-500" />
+                  Edit Transaksi — <span className="font-mono text-indigo-600 dark:text-indigo-400">{editingTx.kode_transaksi}</span>
+                </h2>
+                <p className="text-xs text-slate-400 dark:text-zinc-500">
+                  Penyesuaian item, tanggal, nominal, denda, atau status transaksi
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 text-xs">
+              {/* Customer & Status Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Nama Customer <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustName}
+                    onChange={(e) => setEditCustName(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Nomor WhatsApp <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustWa}
+                    onChange={(e) => setEditCustWa(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 font-mono outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Tanggal Sewa <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editTanggalSewa}
+                    onChange={(e) => setEditTanggalSewa(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Tanggal Wajib Kembali <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editTanggalKembali}
+                    onChange={(e) => setEditTanggalKembali(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Status Sewa
+                  </label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none font-bold"
+                  >
+                    <option value="Sedang Disewa">Sedang Disewa (Aktif)</option>
+                    <option value="Booking">Booking (Belum Diambil)</option>
+                    <option value="Selesai">Selesai (Jas Sudah Kembali)</option>
+                    <option value="Terlambat">Terlambat</option>
+                    <option value="Dibatalkan">Dibatalkan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
+                    Status Pembayaran
+                  </label>
+                  <select
+                    value={editStatusPembayaran}
+                    onChange={(e) => setEditStatusPembayaran(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none font-bold"
+                  >
+                    <option value="Lunas">Lunas</option>
+                    <option value="DP">DP (Uang Muka)</option>
+                    <option value="Belum Bayar">Belum Bayar</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Edit Items Section */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
+                    Item Jas & Aksesoris
+                  </span>
+                  <button
+                    type="button"
+                    onClick={addEditItemRow}
+                    className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                  >
+                    + Tambah Item
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {editSelectedItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-2"
+                    >
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={item.kodeJas}
+                          onChange={(e) => handleEditItemChange(idx, e.target.value)}
+                          className="flex-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 outline-none font-medium"
+                        >
+                          <option value="">-- Pilih Item Inventori --</option>
+                          {inventory.map((inv) => (
+                            <option key={inv.id} value={inv.kode_jas}>
+                              {inv.nama_jas} ({inv.warna || "-"}, {inv.ukuran || "-"}) — Rp {formatThousand(Number(inv.harga_default || 0))}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => removeEditItemRow(idx)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
+                          title="Hapus baris item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-0.5">Jumlah (Qty)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.jumlah}
+                            onChange={(e) => updateEditItemQtyOrPrice(idx, "jumlah", Number(e.target.value) || 1)}
+                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-0.5">Harga Sewa Satuan (Rp)</label>
+                          <CurrencyInput
+                            value={item.harga}
+                            onChange={(val) => updateEditItemQtyOrPrice(idx, "harga", val)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Financial Inputs */}
+              <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 space-y-3">
+                <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider block">
+                  Penyesuaian Finansial & Pembayaran
+                </span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Potongan / Diskon (Rp)</label>
+                    <CurrencyInput value={editPotongan} onChange={setEditPotongan} />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Deposit Jaminan (Rp)</label>
+                    <CurrencyInput value={editDeposit} onChange={setEditDeposit} />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Denda (Rp)</label>
+                    <CurrencyInput value={editDenda} onChange={setEditDenda} />
+                  </div>
+                  <div>
+                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Jumlah Dibayar (Rp)</label>
+                    <CurrencyInput value={editJumlahDibayar} onChange={setEditJumlahDibayar} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10.5px] text-slate-500 mb-0.5">Catatan</label>
+                  <input
+                    type="text"
+                    value={editCatatan}
+                    onChange={(e) => setEditCatatan(e.target.value)}
+                    placeholder="Catatan khusus, fitting, penyesuaian..."
+                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none"
+                  />
+                </div>
+
+                {/* Summary calculation box */}
+                <div className="p-3 bg-slate-50 dark:bg-zinc-950 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-1">
+                  <div className="flex justify-between text-slate-500">
+                    <span>Subtotal Item:</span>
+                    <span className="font-mono font-semibold">{formatRupiah(editSubtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold text-slate-900 dark:text-zinc-100">
+                    <span>TOTAL TAGIHAN:</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400">{formatRupiah(editTotalBayar)}</span>
+                  </div>
+                  {editSisaPembayaran > 0 ? (
+                    <div className="flex justify-between font-bold text-rose-600 dark:text-rose-400">
+                      <span>Sisa Pembayaran:</span>
+                      <span className="font-mono">{formatRupiah(editSisaPembayaran)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
+                      <span>Status:</span>
+                      <span className="flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> LUNAS
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Form Footer */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100 font-medium cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-bold shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? "Menyimpan Perubahan..." : "Simpan Perubahan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE TRANSAKSI MODAL */}
+      {deleteModalOpen && txToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100">
+                  Hapus Transaksi?
+                </h3>
+                <p className="text-xs text-slate-400 dark:text-zinc-500 font-mono">
+                  {txToDelete.kode_transaksi}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-zinc-950 p-3.5 rounded-2xl border border-slate-200 dark:border-zinc-800 text-xs space-y-1.5 text-slate-700 dark:text-zinc-300">
+              <div className="flex justify-between">
+                <span>Customer:</span>
+                <span className="font-bold text-slate-900 dark:text-zinc-100">{txToDelete.nama_customer}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Biaya:</span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatRupiah(txToDelete.total_bayar)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status Saat Ini:</span>
+                <span className="font-bold">{txToDelete.status}</span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Pemberitahuan Stok:</strong> Jika transaksi ini dalam status <em>Sedang Disewa</em> atau <em>Terlambat</em>, stok jas yang dipinjam akan secara otomatis dikembalikan ke inventori toko.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setTxToDelete(null);
+                }}
+                disabled={deleting}
+                className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100 font-medium text-xs cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+              >
+                {deleting ? "Menghapus..." : "Hapus Transaksi Permanen"}
+              </button>
             </div>
           </div>
         </div>

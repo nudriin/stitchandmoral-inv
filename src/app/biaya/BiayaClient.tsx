@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { formatRupiah, formatDateIndo } from "@/lib/utils";
-import { Plus, Wallet, Trash2, Tag, Calendar, Layers, LayoutGrid, List } from "lucide-react";
+import { Plus, Wallet, Trash2, Tag, Calendar, Layers, LayoutGrid, List, X } from "lucide-react";
 import type { Pengeluaran, ModalItem } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 
@@ -376,10 +376,11 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-zinc-800">
               <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">Catat Pengeluaran Operasional</h2>
               <button
+                type="button"
                 onClick={() => setExpenseModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm cursor-pointer transition"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleAddExpense} className="space-y-3.5 text-sm">
@@ -466,10 +467,11 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-zinc-800">
               <h2 className="text-base font-bold text-slate-900 dark:text-zinc-100">Catat Aset Modal (CAPEX)</h2>
               <button
+                type="button"
                 onClick={() => setModalItemModalOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm cursor-pointer transition"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleAddModalItem} className="space-y-3.5 text-sm">

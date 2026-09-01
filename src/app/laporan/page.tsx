@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Transaksi, ModalItem, Inventori, Pengeluaran, Customer } from "@/types/database";
 import { PrintReportButton } from "./PrintReportButton";
+import { MonthlyRevenueFilter } from "@/components/MonthlyRevenueFilter";
 
 export const revalidate = 15;
 
@@ -161,10 +162,10 @@ export default async function LaporanPage() {
   const allMonths = Array.from(new Set([...Object.keys(monthlyRevenue), ...Object.keys(monthlyExpenses)])).sort();
   const maxMonthRev = Math.max(...allMonths.map((m) => monthlyRevenue[m] || 0), 1);
 
-  // 4. CUSTOMER RANKING (TOP SPENDERS & REPEAT CUSTOMERS) & NEW CUSTOMERS THIS MONTH
   const currentMonthKey = new Date().toISOString().slice(0, 7);
   const currentMonthName = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(new Date());
 
+  // 4. CUSTOMER RANKING (TOP SPENDERS & REPEAT CUSTOMERS) & NEW CUSTOMERS THIS MONTH
   const customerFirstTxDate: Record<string, string> = {};
   validTx.forEach((t) => {
     const key = t.customer_id || t.nama_customer;
@@ -173,20 +174,19 @@ export default async function LaporanPage() {
     }
   });
 
-  const customerTxCount: Record<string, { id?: string; nama: string; count: number; totalSpent: number; whatsapp: string; createdAt?: string }> = {};
+  const customerTxCount: Record<string, { id?: string; nama: string; count: number; totalSpent: number; whatsapp: string; lastRented?: string }> = {};
   validTx.forEach((t) => {
     const key = t.customer_id || t.nama_customer;
     if (!customerTxCount[key]) {
-      customerTxCount[key] = { id: t.customer_id || undefined, nama: t.nama_customer, count: 0, totalSpent: 0, whatsapp: t.whatsapp || "" };
+      customerTxCount[key] = { id: t.customer_id || undefined, nama: t.nama_customer, count: 0, totalSpent: 0, whatsapp: t.whatsapp || "", lastRented: t.tanggal_sewa || "" };
     }
     customerTxCount[key].count += 1;
     customerTxCount[key].totalSpent +=
       (Number(t.subtotal || t.total_bayar || 0) - Number(t.potongan || 0)) + Number(t.denda || 0);
   });
 
-  // Calculate new customers this month (by created_at or first rental date in current month)
   const newCustomersThisMonth = custList.filter((c) => {
-    const createdMonth = c.created_at ? String(c.created_at).slice(0, 7) : "";
+    const createdMonth = c.created_at ? c.created_at.slice(0, 7) : "";
     const firstTxMonth = customerFirstTxDate[c.customer_id] ? customerFirstTxDate[c.customer_id].slice(0, 7) : "";
     return createdMonth === currentMonthKey || firstTxMonth === currentMonthKey;
   });
@@ -222,6 +222,9 @@ export default async function LaporanPage() {
 
         <PrintReportButton />
       </div>
+
+      {/* Filter Pendapatan & Analisis Per Bulan */}
+      <MonthlyRevenueFilter transactions={txList} expenses={expList} />
 
       {/* 1. FINANCIAL & CUSTOMER OVERVIEW METRICS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -304,7 +307,7 @@ export default async function LaporanPage() {
           </div>
           <div className="text-left sm:text-right">
             <span className={`text-lg sm:text-xl font-bold ${isBepReached ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-              {isBepReached ? "SUDAH BEP! 🎉" : `Sisa ${formatRupiah(sisaBep)}`}
+              {isBepReached ? "SUDAH BEP (LUNAS MODAL)" : `Sisa ${formatRupiah(sisaBep)}`}
             </span>
             <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400">
               Tercapai {bepPercent}% dari Modal
@@ -366,8 +369,8 @@ export default async function LaporanPage() {
               )}
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-            💡 Ukuran M dan L merupakan ukuran jas yang paling dominan dibutuhkan pelanggan.
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+            Catatan: Ukuran M dan L merupakan ukuran jas yang paling dominan dibutuhkan pelanggan.
           </p>
         </div>
 
@@ -412,8 +415,8 @@ export default async function LaporanPage() {
               )}
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-            💡 Ukuran celana fleksibel (32-34) sangat praktis dan paling sering disewa bersama jas.
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+            Catatan: Ukuran celana fleksibel (32-34) sangat praktis dan paling sering disewa bersama jas.
           </p>
         </div>
       </div>
@@ -461,8 +464,8 @@ export default async function LaporanPage() {
               )}
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-            💡 Warna Hitam & Navy mendominasi kebutuhan acara formal & wisuda.
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+            Catatan: Warna Hitam & Navy mendominasi kebutuhan acara formal & wisuda.
           </p>
         </div>
 
@@ -507,8 +510,8 @@ export default async function LaporanPage() {
               )}
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-            💡 Dasi Salur & Netral menjadi paket favorit bersama jas utama.
+          <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+            Catatan: Dasi Salur & Netral menjadi paket favorit bersama jas utama.
           </p>
         </div>
       </div>
@@ -577,8 +580,8 @@ export default async function LaporanPage() {
                 })}
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-              💡 Berikan diskon khusus atau reward loyalitas bagi Top Spender agar terus repeat order.
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+              Catatan: Berikan diskon khusus atau reward loyalitas bagi Top Spender agar terus repeat order.
             </p>
           </div>
 
@@ -619,8 +622,8 @@ export default async function LaporanPage() {
                 ))}
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 italic">
-              💡 {repeatCustomersCount} dari {custList.length} pelanggan telah kembali menyewa lebih dari 1 kali.
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800/60 font-medium">
+              Catatan: {repeatCustomersCount} dari {custList.length} pelanggan telah kembali menyewa lebih dari 1 kali.
             </p>
           </div>
         </div>

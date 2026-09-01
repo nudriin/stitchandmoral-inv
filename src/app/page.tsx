@@ -12,8 +12,10 @@ import {
   ArrowUpRight,
   Sparkles,
 } from "lucide-react";
-import type { Inventori, Transaksi, Customer } from "@/types/database";
+import type { Inventori, Transaksi, Customer, Pengeluaran } from "@/types/database";
 import { NotificationManager } from "@/components/NotificationManager";
+import { MonthlyRevenueFilter } from "@/components/MonthlyRevenueFilter";
+import { CategoryStockCards } from "@/components/CategoryStockCards";
 
 export const revalidate = 15; // Enable Stale-While-Revalidate Caching for instant navigation
 
@@ -25,15 +27,18 @@ export default async function DashboardPage() {
     { data: inventori = [] },
     { data: transaksi = [] },
     { data: customer = [] },
+    { data: pengeluaran = [] },
   ] = await Promise.all([
     supabase.from("inventori").select("*"),
     supabase.from("transaksi").select("*"),
     supabase.from("customer").select("*"),
+    supabase.from("pengeluaran").select("*"),
   ]);
 
   const items = (inventori as Inventori[]) || [];
   const txList = (transaksi as Transaksi[]) || [];
   const custList = (customer as Customer[]) || [];
+  const expList = (pengeluaran as Pengeluaran[]) || [];
 
   // Metrics
   const totalStokTersedia = items.reduce((acc, i) => acc + (Number(i.stok_tersedia) || 0), 0);
@@ -105,64 +110,13 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
-              Stok Tersedia
-            </span>
-            <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-zinc-100 mt-2">
-            {totalStokTersedia}
-          </div>
-          <span className="text-xs text-slate-500 dark:text-zinc-400 mt-1 block">
-            {totalStokDisewa} jas sedang disewa
-          </span>
-        </div>
+      {/* 1. Monthly Revenue & Filter */}
+      <MonthlyRevenueFilter transactions={txList} expenses={expList} />
 
-        <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
-              Disewa Bulan Ini
-            </span>
-            <ShoppingBag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-zinc-100 mt-2">
-            {monthTx.length}
-          </div>
-          <span className="text-xs text-slate-500 dark:text-zinc-400 mt-1 block">Total transaksi aktif & selesai</span>
-        </div>
+      {/* 2. Category Stock Availability Cards */}
+      <CategoryStockCards inventory={items} />
 
-        <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
-              Pendapatan Bulan Ini
-            </span>
-            <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-zinc-100 mt-2 truncate">
-            {formatRupiah(pendapatanBulanIni)}
-          </div>
-          <span className="text-xs text-slate-500 dark:text-zinc-400 mt-1 block">Bulan {currentMonth}</span>
-        </div>
-
-        <div className="bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
-              Total Customer
-            </span>
-            <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-zinc-100 mt-2">
-            {custList.length}
-          </div>
-          <span className="text-xs text-slate-500 dark:text-zinc-400 mt-1 block">Pelanggan terdaftar</span>
-        </div>
-      </div>
-
-      {/* Push Notification Manager & 12:00 PM System Alert */}
+      {/* 3. Push Notification Manager & 12:00 PM System Alert */}
       <NotificationManager />
 
       {/* Notifications & Reminders */}
@@ -243,7 +197,7 @@ export default async function DashboardPage() {
               ))
             ) : (
               <p className="text-xs text-slate-400 dark:text-zinc-500 py-6 text-center">
-                Semua jas dikembalikan tepat waktu! 🎉
+                Semua jas dikembalikan tepat waktu.
               </p>
             )}
           </div>
