@@ -35,3 +35,16 @@ export function getDriveThumbnail(url: string | null | undefined, width = 360): 
   return match ? `https://drive.google.com/thumbnail?id=${match[0]}&sz=w${width}` : url;
 }
 
+export function calculateRentalDays(startDate: string | null | undefined, returnDate: string | null | undefined): number {
+  if (!startDate || !returnDate) return 1;
+  try {
+    const start = new Date(String(startDate).slice(0, 10) + "T00:00:00").getTime();
+    const end = new Date(String(returnDate).slice(0, 10) + "T00:00:00").getTime();
+    if (isNaN(start) || isNaN(end)) return 1;
+    const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diffDays);
+  } catch {
+    return 1;
+  }
+}
+

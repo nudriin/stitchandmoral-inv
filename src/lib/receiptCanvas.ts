@@ -78,6 +78,11 @@ export function generateReceiptCanvas(tx: Transaksi): HTMLCanvasElement {
   ctx.font = "700 13px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillText(tx.kode_transaksi, leftX, colY + 16);
 
+  // Calculate rental duration
+  const startMs = new Date(String(tx.tanggal_sewa).slice(0, 10) + "T00:00:00").getTime();
+  const endMs = new Date(String(tx.tanggal_kembali).slice(0, 10) + "T00:00:00").getTime();
+  const rentalDays = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24))) || 1;
+
   ctx.fillStyle = "#64748B";
   ctx.font = "400 11px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
   ctx.fillText("Customer", leftX, colY + 36);
@@ -107,7 +112,7 @@ export function generateReceiptCanvas(tx: Transaksi): HTMLCanvasElement {
 
   ctx.fillStyle = "#64748B";
   ctx.font = "400 11px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
-  ctx.fillText("Status: " + tx.status, rightEdge, colY + 70);
+  ctx.fillText(`Durasi: ${rentalDays} Hari • Status: ${tx.status}`, rightEdge, colY + 70);
 
   y += 88;
 
@@ -125,9 +130,9 @@ export function generateReceiptCanvas(tx: Transaksi): HTMLCanvasElement {
   ctx.textAlign = "left";
   ctx.fillText("ITEM / VARIAN", padding, y);
   ctx.textAlign = "center";
-  ctx.fillText("QTY", width - padding - 210, y);
+  ctx.fillText("QTY", width - padding - 220, y);
   ctx.textAlign = "right";
-  ctx.fillText("HARGA", width - padding - 110, y);
+  ctx.fillText("HARGA / HARI", width - padding - 110, y);
   ctx.fillText("TOTAL", width - padding, y);
 
   y += 10;
@@ -141,6 +146,10 @@ export function generateReceiptCanvas(tx: Transaksi): HTMLCanvasElement {
 
   // Table Items
   (tx.items || []).forEach((item) => {
+    const itemDays = item.durasi_hari || rentalDays;
+    const dailyPrice = item.harga_per_hari || Math.round(item.harga / itemDays) || item.harga;
+    const itemTotal = item.harga * item.jumlah;
+
     ctx.textAlign = "left";
     ctx.fillStyle = "#0F172A";
     ctx.font = "700 12px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
@@ -148,18 +157,18 @@ export function generateReceiptCanvas(tx: Transaksi): HTMLCanvasElement {
 
     ctx.fillStyle = "#64748B";
     ctx.font = "400 11px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText(`${item.warna || "-"} • Ukuran ${item.ukuran || "-"}`, padding, y + 14);
+    ctx.fillText(`${item.warna || "-"} • Ukuran ${item.ukuran || "-"} (${itemDays} Hari)`, padding, y + 14);
 
     ctx.fillStyle = "#0F172A";
     ctx.font = "400 12px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(String(item.jumlah), width - padding - 210, y + 5);
+    ctx.fillText(String(item.jumlah), width - padding - 220, y + 5);
 
     ctx.textAlign = "right";
-    ctx.fillText(formatRupiah(item.harga), width - padding - 110, y + 5);
+    ctx.fillText(formatRupiah(dailyPrice) + "/hr", width - padding - 110, y + 5);
 
     ctx.font = "700 12px 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText(formatRupiah(item.harga * item.jumlah), width - padding, y + 5);
+    ctx.fillText(formatRupiah(itemTotal), width - padding, y + 5);
 
     y += 34;
     ctx.strokeStyle = "#F1F5F9";

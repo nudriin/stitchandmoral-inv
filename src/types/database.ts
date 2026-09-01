@@ -5,7 +5,9 @@ export interface TransactionItem {
   warna?: string;
   ukuran?: string;
   jumlah: number;
-  harga: number;
+  harga: number; // total harga sewa per unit untuk seluruh durasi
+  harga_per_hari?: number; // harga sewa per 1 hari
+  durasi_hari?: number; // durasi hari sewa
 }
 
 export interface Inventori {

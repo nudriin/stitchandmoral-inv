@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { formatRupiah, formatDateIndo } from "@/lib/utils";
+import { formatRupiah, formatDateIndo, calculateRentalDays } from "@/lib/utils";
 import {
   Plus,
   Search,
@@ -327,6 +327,16 @@ export function TransaksiClient({
   const supabase = createClient();
 
   // Calculations for new transaction
+  const createRentalDays = useMemo(
+    () => calculateRentalDays(tanggalSewa, tanggalKembali),
+    [tanggalSewa, tanggalKembali]
+  );
+
+  const editRentalDays = useMemo(
+    () => calculateRentalDays(editTanggalSewa, editTanggalKembali),
+    [editTanggalSewa, editTanggalKembali]
+  );
+
   const subtotal = useMemo(
     () => selectedItems.reduce((sum, item) => sum + item.harga * item.jumlah, 0),
     [selectedItems]
@@ -341,6 +351,96 @@ export function TransaksiClient({
   );
   const editTotalBayar = Math.max(0, editSubtotal - editPotongan) + editDenda;
   const editSisaPembayaran = Math.max(0, editTotalBayar - editJumlahDibayar);
+
+  function handleTanggalSewaChange(newStart: string) {
+    setTanggalSewa(newStart);
+    const newDays = calculateRentalDays(newStart, tanggalKembali);
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+        return {
+          ...item,
+          harga_per_hari: daily,
+          durasi_hari: newDays,
+          harga: daily * newDays,
+        };
+      })
+    );
+  }
+
+  function handleTanggalKembaliChange(newEnd: string) {
+    setTanggalKembali(newEnd);
+    const newDays = calculateRentalDays(tanggalSewa, newEnd);
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+        return {
+          ...item,
+          harga_per_hari: daily,
+          durasi_hari: newDays,
+          harga: daily * newDays,
+        };
+      })
+    );
+  }
+
+  function handleEditTanggalSewaChange(newStart: string) {
+    setEditTanggalSewa(newStart);
+    const newDays = calculateRentalDays(newStart, editTanggalKembali);
+    setEditSelectedItems((prev) =>
+      prev.map((item) => {
+        const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+        return {
+          ...item,
+          harga_per_hari: daily,
+          durasi_hari: newDays,
+          harga: daily * newDays,
+        };
+      })
+    );
+  }
+
+  function handleEditTanggalKembaliChange(newEnd: string) {
+    setEditTanggalKembali(newEnd);
+    const newDays = calculateRentalDays(editTanggalSewa, newEnd);
+    setEditSelectedItems((prev) =>
+      prev.map((item) => {
+        const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+        return {
+          ...item,
+          harga_per_hari: daily,
+          durasi_hari: newDays,
+          harga: daily * newDays,
+        };
+      })
+    );
+  }
+
+  function updateItemDailyPrice(index: number, dailyPrice: number) {
+    setSelectedItems((prev) => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        harga_per_hari: dailyPrice,
+        durasi_hari: createRentalDays,
+        harga: dailyPrice * createRentalDays,
+      };
+      return next;
+    });
+  }
+
+  function updateEditItemDailyPrice(index: number, dailyPrice: number) {
+    setEditSelectedItems((prev) => {
+      const next = [...prev];
+      next[index] = {
+        ...next[index],
+        harga_per_hari: dailyPrice,
+        durasi_hari: editRentalDays,
+        harga: dailyPrice * editRentalDays,
+      };
+      return next;
+    });
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -400,6 +500,7 @@ export function TransaksiClient({
   function handleItemChange(index: number, kodeJas: string) {
     const inv = inventory.find((i) => i.kode_jas === kodeJas);
     if (!inv) return;
+    const daily = Number(inv.harga_default || 0);
 
     setSelectedItems((prev) => {
       const next = [...prev];
@@ -409,8 +510,10 @@ export function TransaksiClient({
         jenisJas: inv.jenis_jas,
         warna: inv.warna,
         ukuran: inv.ukuran,
-        jumlah: 1,
-        harga: Number(inv.harga_default || 0),
+        jumlah: next[index]?.jumlah || 1,
+        harga_per_hari: daily,
+        durasi_hari: createRentalDays,
+        harga: daily * createRentalDays,
       };
       return next;
     });
@@ -654,6 +757,7 @@ export function TransaksiClient({
   }
 
   function handleOpenEdit(tx: Transaksi) {
+    const duration = calculateRentalDays(tx.tanggal_sewa, tx.tanggal_kembali);
     setEditingTx(tx);
     setEditCustName(tx.nama_customer || "");
     setEditCustWa(tx.whatsapp || "");
@@ -669,8 +773,17 @@ export function TransaksiClient({
     setEditCatatan(tx.catatan || "");
     setEditSelectedItems(
       Array.isArray(tx.items) && tx.items.length > 0
-        ? tx.items.map((i) => ({ ...i }))
-        : [{ kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 }]
+        ? tx.items.map((i) => {
+            const itemDays = i.durasi_hari || duration;
+            const daily = i.harga_per_hari ?? (itemDays ? Math.round(i.harga / itemDays) : i.harga);
+            return {
+              ...i,
+              harga_per_hari: daily,
+              durasi_hari: itemDays,
+              harga: i.harga || daily * itemDays,
+            };
+          })
+        : [{ kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0, harga_per_hari: 0, durasi_hari: duration }]
     );
     setEditModalOpen(true);
   }
@@ -678,14 +791,14 @@ export function TransaksiClient({
   function addEditItemRow() {
     setEditSelectedItems((prev) => [
       ...prev,
-      { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 },
+      { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0, harga_per_hari: 0, durasi_hari: editRentalDays },
     ]);
   }
 
   function removeEditItemRow(index: number) {
     if (editSelectedItems.length <= 1) {
       setEditSelectedItems([
-        { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0 },
+        { kodeJas: "", namaJas: "", jenisJas: "Jas", warna: "", ukuran: "", jumlah: 1, harga: 0, harga_per_hari: 0, durasi_hari: editRentalDays },
       ]);
       return;
     }
@@ -695,6 +808,7 @@ export function TransaksiClient({
   function handleEditItemChange(index: number, kodeJas: string) {
     const inv = inventory.find((i) => i.kode_jas === kodeJas);
     if (!inv) return;
+    const daily = Number(inv.harga_default || 0);
 
     setEditSelectedItems((prev) => {
       const next = [...prev];
@@ -704,8 +818,10 @@ export function TransaksiClient({
         jenisJas: inv.jenis_jas,
         warna: inv.warna,
         ukuran: inv.ukuran,
-        jumlah: 1,
-        harga: Number(inv.harga_default || 0),
+        jumlah: next[index]?.jumlah || 1,
+        harga_per_hari: daily,
+        durasi_hari: editRentalDays,
+        harga: daily * editRentalDays,
       };
       return next;
     });
@@ -997,20 +1113,23 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
   }
 
   function printReceipt(tx: Transaksi) {
+    const duration = calculateRentalDays(tx.tanggal_sewa, tx.tanggal_kembali);
     const rows = (tx.items || [])
-      .map(
-        (item) => `
+      .map((item) => {
+        const days = item.durasi_hari || duration;
+        const daily = item.harga_per_hari || (days ? Math.round(item.harga / days) : item.harga);
+        return `
         <tr>
           <td>
             <div style="font-weight:700; color:#0f172a; font-size:12px">${item.namaJas}</div>
-            <div style="color:#64748b; font-size:10.5px">${item.warna || "-"} • Ukuran ${item.ukuran || "-"}</div>
+            <div style="color:#64748b; font-size:10.5px">${item.warna || "-"} • Ukuran ${item.ukuran || "-"} (${days} Hari)</div>
           </td>
           <td style="text-align:center; font-family:'Roboto', sans-serif; font-size:12px">${item.jumlah}</td>
-          <td style="text-align:right; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(item.harga)}</td>
+          <td style="text-align:right; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(daily)}/hr</td>
           <td style="text-align:right; font-weight:700; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(item.harga * item.jumlah)}</td>
         </tr>
-      `
-      )
+      `;
+      })
       .join("");
 
     const printWindow = window.open("", "_blank");
@@ -1198,7 +1317,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
 
                 <div class="meta-label">Tgl Wajib Kembali</div>
                 <div class="meta-value" style="color:#0f172a">${formatDateIndo(tx.tanggal_kembali)}</div>
-                <div style="color:#64748b; font-size:10.5px">Status: <b>${tx.status}</b></div>
+                <div style="color:#64748b; font-size:10.5px">Durasi: <b>${duration} Hari</b> • Status: <b>${tx.status}</b></div>
               </div>
             </div>
 
@@ -1207,7 +1326,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 <tr>
                   <th>ITEM / VARIAN</th>
                   <th style="text-align:center">QTY</th>
-                  <th style="text-align:right">HARGA</th>
+                  <th style="text-align:right">HARGA / HARI</th>
                   <th style="text-align:right">TOTAL</th>
                 </tr>
               </thead>
@@ -1801,30 +1920,42 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
               </div>
 
               {/* Tanggal Sewa */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
-                    Tanggal Mulai Sewa *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={tanggalSewa}
-                    onChange={(e) => setTanggalSewa(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 text-xs outline-none"
-                  />
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">
+                    Periode & Durasi Sewa
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-900/50">
+                    <Clock className="w-3.5 h-3.5" />
+                    Durasi: {createRentalDays} Hari
+                  </span>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
-                    Tanggal Wajib Kembali *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={tanggalKembali}
-                    onChange={(e) => setTanggalKembali(e.target.value)}
-                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 text-xs outline-none"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Tanggal Mulai Sewa *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={tanggalSewa}
+                      onChange={(e) => handleTanggalSewaChange(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 text-xs outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Tanggal Wajib Kembali *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={tanggalKembali}
+                      onChange={(e) => handleTanggalKembaliChange(e.target.value)}
+                      className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 text-xs outline-none font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1844,104 +1975,121 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 </div>
 
                 <div className="space-y-3">
-                  {selectedItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className="bg-slate-50 dark:bg-zinc-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 text-xs space-y-3"
-                    >
-                      {/* Item Card Header with Delete/Clear button */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-zinc-800/80">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 dark:text-zinc-200 text-xs">
-                            Item #{index + 1}
-                          </span>
-                          {item.kodeJas && (
-                            <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-semibold">
-                              {item.kodeJas}
+                  {selectedItems.map((item, index) => {
+                    const itemDailyPrice = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+                    const itemTotal = item.harga * item.jumlah;
+
+                    return (
+                      <div
+                        key={index}
+                        className="bg-slate-50 dark:bg-zinc-950/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 text-xs space-y-3"
+                      >
+                        {/* Item Card Header with Delete/Clear button */}
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-zinc-800/80">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-800 dark:text-zinc-200 text-xs">
+                              Item #{index + 1}
                             </span>
-                          )}
+                            {item.kodeJas && (
+                              <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-slate-200/80 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-semibold">
+                                {item.kodeJas}
+                              </span>
+                            )}
+                          </div>
+
+                          {selectedItems.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => removeItemRow(index)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-[11px] transition cursor-pointer border border-rose-200/60 dark:border-rose-900/50"
+                              title="Hapus baris item ini"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Hapus Item</span>
+                            </button>
+                          ) : item.kodeJas ? (
+                            <button
+                              type="button"
+                              onClick={() => removeItemRow(index)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 font-semibold text-[11px] transition cursor-pointer"
+                              title="Kosongkan pilihan item"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>Kosongkan</span>
+                            </button>
+                          ) : null}
                         </div>
 
-                        {selectedItems.length > 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => removeItemRow(index)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-[11px] transition cursor-pointer border border-rose-200/60 dark:border-rose-900/50"
-                            title="Hapus baris item ini"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Hapus Item</span>
-                          </button>
-                        ) : item.kodeJas ? (
-                          <button
-                            type="button"
-                            onClick={() => removeItemRow(index)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-200/70 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 font-semibold text-[11px] transition cursor-pointer"
-                            title="Kosongkan pilihan item"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                            <span>Kosongkan</span>
-                          </button>
-                        ) : null}
-                      </div>
-
-                      {/* Fields: Picker, Qty, Harga */}
-                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                        <div className="sm:col-span-6 min-w-0">
-                          <label className="block text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
-                            Pilih / Cari Jas atau Aksesoris *
-                          </label>
-                          <SearchableItemPicker
-                            inventory={inventory}
-                            selectedCode={item.kodeJas}
-                            onSelect={(inv) => {
-                              setSelectedItems((prev) => {
-                                const next = [...prev];
-                                next[index] = {
-                                 kodeJas: inv.kode_jas,
-                                 namaJas: inv.nama_jas,
-                                 jenisJas: inv.jenis_jas,
-                                 warna: inv.warna,
-                                 ukuran: inv.ukuran,
-                                 jumlah: next[index].jumlah || 1,
-                                 harga: Number(inv.harga_default || 0),
-                                };
-                                return next;
-                              });
-                            }}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:col-span-6 gap-2.5 min-w-0">
-                          <div className="min-w-0">
+                        {/* Fields: Picker, Qty, Harga / Hari, Total */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                          <div className="sm:col-span-5 min-w-0">
                             <label className="block text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
-                              Qty / Jumlah
+                              Pilih / Cari Jas atau Aksesoris *
                             </label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.jumlah}
-                              onChange={(e) => updateItemQtyOrPrice(index, "jumlah", Number(e.target.value))}
-                              className="w-full min-w-0 box-border bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 outline-none text-center font-mono text-xs shadow-sm focus:border-slate-400 dark:focus:border-zinc-600"
-                              placeholder="1"
+                            <SearchableItemPicker
+                              inventory={inventory}
+                              selectedCode={item.kodeJas}
+                              onSelect={(inv) => {
+                                const dailyPrice = Number(inv.harga_default || 0);
+                                setSelectedItems((prev) => {
+                                  const next = [...prev];
+                                  next[index] = {
+                                    kodeJas: inv.kode_jas,
+                                    namaJas: inv.nama_jas,
+                                    jenisJas: inv.jenis_jas,
+                                    warna: inv.warna,
+                                    ukuran: inv.ukuran,
+                                    jumlah: next[index]?.jumlah || 1,
+                                    harga_per_hari: dailyPrice,
+                                    durasi_hari: createRentalDays,
+                                    harga: dailyPrice * createRentalDays,
+                                  };
+                                  return next;
+                                });
+                              }}
                             />
                           </div>
 
-                          <div className="min-w-0">
-                            <label className="block text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
-                              Harga Sewa (Rp)
-                            </label>
-                            <CurrencyInput
-                              value={item.harga}
-                              onChange={(val) => updateItemQtyOrPrice(index, "harga", val)}
-                              placeholder="0"
-                              className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 outline-none font-mono text-xs shadow-sm focus:border-slate-400 dark:focus:border-zinc-600"
-                            />
+                          <div className="grid grid-cols-3 sm:col-span-7 gap-2 min-w-0">
+                            <div className="min-w-0">
+                              <label className="block text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
+                                Qty
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.jumlah}
+                                onChange={(e) => updateItemQtyOrPrice(index, "jumlah", Number(e.target.value) || 1)}
+                                className="w-full min-w-0 box-border bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-slate-900 dark:text-zinc-100 outline-none text-center font-mono text-xs shadow-sm focus:border-slate-400"
+                                placeholder="1"
+                              />
+                            </div>
+
+                            <div className="min-w-0">
+                              <label className="block text-[10px] font-semibold text-slate-500 dark:text-zinc-400 mb-1 truncate" title="Harga sewa per 1 hari">
+                                Harga / Hari (Rp)
+                              </label>
+                              <CurrencyInput
+                                value={itemDailyPrice}
+                                onChange={(val) => updateItemDailyPrice(index, val)}
+                                placeholder="0"
+                                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 outline-none font-mono text-xs shadow-sm focus:border-slate-400"
+                              />
+                            </div>
+
+                            <div className="min-w-0 bg-slate-100/80 dark:bg-zinc-800/60 rounded-xl px-2.5 py-1.5 flex flex-col justify-center text-right border border-slate-200/60 dark:border-zinc-700/50">
+                              <span className="text-[9px] text-slate-400 dark:text-zinc-400 block font-semibold truncate">
+                                Total ({createRentalDays} Hari)
+                              </span>
+                              <span className="font-mono font-bold text-slate-900 dark:text-zinc-100 text-xs truncate">
+                                {formatRupiah(itemTotal)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2204,7 +2352,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                       <span className="font-bold text-slate-900">{formatDateIndo(selectedTx.tanggal_kembali)}</span>
                     </div>
                     <div className="text-[10.5px] text-slate-500">
-                      Status: <span className="font-bold text-slate-900">{selectedTx.status}</span>
+                      Durasi: <span className="font-bold text-indigo-600">{calculateRentalDays(selectedTx.tanggal_sewa, selectedTx.tanggal_kembali)} Hari</span> • <span className="font-bold text-slate-900">{selectedTx.status}</span>
                     </div>
                   </div>
                 </div>
@@ -2215,22 +2363,33 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                     <tr className="text-slate-500 font-bold border-y border-slate-200 text-[10px] uppercase">
                       <th className="py-2 px-1">ITEM / VARIAN</th>
                       <th className="py-2 px-1 text-center">QTY</th>
-                      <th className="py-2 px-1 text-right">HARGA</th>
+                      <th className="py-2 px-1 text-right">HARGA / HARI</th>
                       <th className="py-2 px-1 text-right">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {selectedTx.items?.map((item, i) => (
-                      <tr key={i} className="align-top">
-                        <td className="py-2 px-1">
-                          <b className="text-slate-900">{item.namaJas}</b>
-                          <p className="text-[10px] text-slate-500">{item.warna || "-"} • Ukuran ${item.ukuran || "-"}</p>
-                        </td>
-                        <td className="py-2 px-1 text-center">{item.jumlah}</td>
-                        <td className="py-2 px-1 text-right">{formatRupiah(item.harga)}</td>
-                        <td className="py-2 px-1 text-right font-bold text-slate-900">{formatRupiah(item.harga * item.jumlah)}</td>
-                      </tr>
-                    ))}
+                    {selectedTx.items?.map((item, i) => {
+                      const days = item.durasi_hari || calculateRentalDays(selectedTx.tanggal_sewa, selectedTx.tanggal_kembali);
+                      const daily = item.harga_per_hari || (days ? Math.round(item.harga / days) : item.harga);
+
+                      return (
+                        <tr key={i} className="align-top">
+                          <td className="py-2 px-1">
+                            <b className="text-slate-900">{item.namaJas}</b>
+                            <p className="text-[10px] text-slate-500">
+                              {item.warna || "-"} • Ukuran {item.ukuran || "-"} ({days} Hari)
+                            </p>
+                          </td>
+                          <td className="py-2 px-1 text-center">{item.jumlah}</td>
+                          <td className="py-2 px-1 text-right text-slate-600 font-mono">
+                            {formatRupiah(daily)}/hr
+                          </td>
+                          <td className="py-2 px-1 text-right font-bold text-slate-900 font-mono">
+                            {formatRupiah(item.harga * item.jumlah)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
@@ -2470,6 +2629,12 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                         {formatDateIndo(selectedDetailTx.tanggal_kembali)}
                       </span>
                     </div>
+                    <div className="flex justify-between text-indigo-600 dark:text-indigo-400 font-bold pt-0.5">
+                      <span>Durasi Sewa:</span>
+                      <span>
+                        {calculateRentalDays(selectedDetailTx.tanggal_sewa, selectedDetailTx.tanggal_kembali)} Hari
+                      </span>
+                    </div>
                     {selectedDetailTx.tanggal_dikembalikan && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400 pt-1 border-t border-slate-200 dark:border-zinc-800">
                         <span>Tgl Dikembalikan:</span>
@@ -2494,33 +2659,39 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                         <th className="py-2.5 px-3.5">Nama Item</th>
                         <th className="py-2.5 px-3.5">Varian</th>
                         <th className="py-2.5 px-3.5 text-center">Qty</th>
-                        <th className="py-2.5 px-3.5 text-right">Harga</th>
-                        <th className="py-2.5 px-3.5 text-right">Subtotal</th>
+                        <th className="py-2.5 px-3.5 text-right">Harga / Hari</th>
+                        <th className="py-2.5 px-3.5 text-right">Total Sewa</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                      {selectedDetailTx.items?.map((itm, i) => (
-                        <tr key={i} className="text-slate-800 dark:text-zinc-200">
-                          <td className="py-2.5 px-3.5 font-semibold">
-                            {itm.namaJas}
-                            <span className="text-[10px] text-slate-400 block font-mono">
-                              {itm.kodeJas}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3.5 text-slate-600 dark:text-zinc-400">
-                            {itm.warna || "-"} / {itm.ukuran || "-"}
-                          </td>
-                          <td className="py-2.5 px-3.5 text-center font-mono font-bold">
-                            {itm.jumlah}
-                          </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono">
-                            {formatRupiah(itm.harga)}
-                          </td>
-                          <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">
-                            {formatRupiah(itm.harga * itm.jumlah)}
-                          </td>
-                        </tr>
-                      ))}
+                      {selectedDetailTx.items?.map((itm, i) => {
+                        const duration = calculateRentalDays(selectedDetailTx.tanggal_sewa, selectedDetailTx.tanggal_kembali);
+                        const days = itm.durasi_hari || duration;
+                        const daily = itm.harga_per_hari || (days ? Math.round(itm.harga / days) : itm.harga);
+
+                        return (
+                          <tr key={i} className="text-slate-800 dark:text-zinc-200">
+                            <td className="py-2.5 px-3.5 font-semibold">
+                              {itm.namaJas}
+                              <span className="text-[10px] text-slate-400 block font-mono">
+                                {itm.kodeJas} ({days} Hari)
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3.5 text-slate-600 dark:text-zinc-400">
+                              {itm.warna || "-"} / {itm.ukuran || "-"}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center font-mono font-bold">
+                              {itm.jumlah}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-right font-mono text-slate-600 dark:text-zinc-400">
+                              {formatRupiah(daily)}/hr
+                            </td>
+                            <td className="py-2.5 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-zinc-100">
+                              {formatRupiah(itm.harga * itm.jumlah)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2710,14 +2881,19 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300 mb-1">
-                    Tanggal Sewa <span className="text-rose-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-zinc-300">
+                      Tanggal Sewa <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                      {editRentalDays} Hari
+                    </span>
+                  </div>
                   <input
                     type="date"
                     required
                     value={editTanggalSewa}
-                    onChange={(e) => setEditTanggalSewa(e.target.value)}
+                    onChange={(e) => handleEditTanggalSewaChange(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 font-mono"
                   />
                 </div>
@@ -2730,7 +2906,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                     type="date"
                     required
                     value={editTanggalKembali}
-                    onChange={(e) => setEditTanggalKembali(e.target.value)}
+                    onChange={(e) => handleEditTanggalKembaliChange(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 font-mono"
                   />
                 </div>
@@ -2772,7 +2948,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
               <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider">
-                    Item Jas & Aksesoris
+                    Item Jas & Aksesoris ({editRentalDays} Hari)
                   </span>
                   <button
                     type="button"
@@ -2784,56 +2960,67 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                 </div>
 
                 <div className="space-y-2">
-                  {editSelectedItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={item.kodeJas}
-                          onChange={(e) => handleEditItemChange(idx, e.target.value)}
-                          className="flex-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 outline-none font-medium"
-                        >
-                          <option value="">-- Pilih Item Inventori --</option>
-                          {inventory.map((inv) => (
-                            <option key={inv.id} value={inv.kode_jas}>
-                              {inv.nama_jas} ({inv.warna || "-"}, {inv.ukuran || "-"}) — Rp {formatThousand(Number(inv.harga_default || 0))}
-                            </option>
-                          ))}
-                        </select>
+                  {editSelectedItems.map((item, idx) => {
+                    const itemDaily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
+                    const itemTotal = item.harga * item.jumlah;
 
-                        <button
-                          type="button"
-                          onClick={() => removeEditItemRow(idx)}
-                          className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
-                          title="Hapus baris item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                    return (
+                      <div
+                        key={idx}
+                        className="p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={item.kodeJas}
+                            onChange={(e) => handleEditItemChange(idx, e.target.value)}
+                            className="flex-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 outline-none font-medium"
+                          >
+                            <option value="">-- Pilih Item Inventori --</option>
+                            {inventory.map((inv) => (
+                              <option key={inv.id} value={inv.kode_jas}>
+                                {inv.nama_jas} ({inv.warna || "-"}, {inv.ukuran || "-"}) — Rp {formatThousand(Number(inv.harga_default || 0))}/hr
+                              </option>
+                            ))}
+                          </select>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] text-slate-500 mb-0.5">Jumlah (Qty)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.jumlah}
-                            onChange={(e) => updateEditItemQtyOrPrice(idx, "jumlah", Number(e.target.value) || 1)}
-                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 font-mono"
-                          />
+                          <button
+                            type="button"
+                            onClick={() => removeEditItemRow(idx)}
+                            className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
+                            title="Hapus baris item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                        <div>
-                          <label className="block text-[10px] text-slate-500 mb-0.5">Harga Sewa Satuan (Rp)</label>
-                          <CurrencyInput
-                            value={item.harga}
-                            onChange={(val) => updateEditItemQtyOrPrice(idx, "harga", val)}
-                          />
+
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-slate-500 mb-0.5">Qty</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.jumlah}
+                              onChange={(e) => updateEditItemQtyOrPrice(idx, "jumlah", Number(e.target.value) || 1)}
+                              className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 dark:text-zinc-100 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-500 mb-0.5">Harga / Hari (Rp)</label>
+                            <CurrencyInput
+                              value={itemDaily}
+                              onChange={(val) => updateEditItemDailyPrice(idx, val)}
+                            />
+                          </div>
+                          <div className="bg-slate-100 dark:bg-zinc-800/80 rounded-xl px-2.5 py-1 flex flex-col justify-center text-right">
+                            <span className="text-[9px] text-slate-400 block font-medium truncate">Total ({editRentalDays} Hari)</span>
+                            <span className="font-mono font-bold text-slate-900 dark:text-zinc-100 text-xs truncate">
+                              {formatRupiah(itemTotal)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
