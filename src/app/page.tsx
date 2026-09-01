@@ -11,6 +11,7 @@ import {
   Plus,
   ArrowUpRight,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import type { Inventori, Transaksi, Customer, Pengeluaran } from "@/types/database";
 import { NotificationManager } from "@/components/NotificationManager";
@@ -100,6 +101,13 @@ export default async function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-2.5">
+          <Link
+            href="/kalender"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-sm transition shadow-2xs"
+          >
+            <Calendar className="w-4 h-4 text-indigo-500" />
+            <span>Kalender Sewa</span>
+          </Link>
           <Link
             href="/transaksi"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-sm transition shadow-sm"

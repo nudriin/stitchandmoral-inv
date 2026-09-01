@@ -7,6 +7,7 @@ import {
   Layers,
   Users,
   ReceiptText,
+  Calendar,
   BarChart3,
   Wallet,
   LogOut,
@@ -20,6 +21,7 @@ import { Palette } from "lucide-react";
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/transaksi", label: "Transaksi", icon: ReceiptText },
+  { href: "/kalender", label: "Kalender", icon: Calendar },
   { href: "/inventori", label: "Inventori", icon: Layers },
   { href: "/customers", label: "Customer", icon: Users },
   { href: "/laporan", label: "Laporan", icon: BarChart3 },
