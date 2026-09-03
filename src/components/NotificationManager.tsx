@@ -9,6 +9,7 @@ import {
   checkDueRentalsAndSendPushAction,
   PushSubscriptionPayload,
 } from "@/app/actions/notification";
+import { useDialog } from "@/components/ModalDialogProvider";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -24,6 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function NotificationManager() {
+  const { showAlert } = useDialog();
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -95,7 +97,11 @@ export function NotificationManager() {
         setPermission(perm);
 
         if (perm !== "granted") {
-          alert("Izin notifikasi ditolak. Harap izinkan notifikasi di pengaturan browser Anda.");
+          showAlert({
+            title: "Izin Notifikasi Ditolak",
+            message: "Izin notifikasi ditolak. Harap izinkan notifikasi di pengaturan browser Anda.",
+            type: "warning",
+          });
           setLoading(false);
           return;
         }

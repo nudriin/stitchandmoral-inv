@@ -5,6 +5,7 @@ import { formatRupiah, formatDateIndo } from "@/lib/utils";
 import { Plus, Wallet, Trash2, Tag, Calendar, Layers, LayoutGrid, List, X } from "lucide-react";
 import type { Pengeluaran, ModalItem } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { useDialog } from "@/components/ModalDialogProvider";
 
 interface Props {
   initialExpenses: Pengeluaran[];
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function BiayaClient({ initialExpenses, initialModal }: Props) {
+  const { showAlert, showConfirm } = useDialog();
   const [activeTab, setActiveTab] = useState<"operasional" | "modal">("operasional");
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [expenses, setExpenses] = useState<Pengeluaran[]>(initialExpenses);
@@ -48,7 +50,11 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
 
     const { data, error } = await supabase.from("pengeluaran").insert([payload]).select().single();
     if (error) {
-      alert("Gagal menambah pengeluaran: " + error.message);
+      showAlert({
+        title: "Gagal Menambah Pengeluaran",
+        message: error.message,
+        type: "danger",
+      });
     } else if (data) {
       setExpenses((prev) => [data as Pengeluaran, ...prev]);
       setExpenseModalOpen(false);
@@ -74,7 +80,11 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
 
     const { data, error } = await supabase.from("modal").insert([payload]).select().single();
     if (error) {
-      alert("Gagal menambah aset modal: " + error.message);
+      showAlert({
+        title: "Gagal Menambah Aset Modal",
+        message: error.message,
+        type: "danger",
+      });
     } else if (data) {
       setModalItems((prev) => [data as ModalItem, ...prev]);
       setModalItemModalOpen(false);
@@ -83,15 +93,45 @@ export function BiayaClient({ initialExpenses, initialModal }: Props) {
   }
 
   async function handleDeleteExpense(id: string) {
-    if (!confirm("Hapus pengeluaran ini?")) return;
+    const confirmed = await showConfirm({
+      title: "Hapus Catatan Pengeluaran",
+      message: "Apakah Anda yakin ingin menghapus data pengeluaran ini?",
+      type: "danger",
+      confirmText: "Ya, Hapus",
+    });
+    if (!confirmed) return;
+
     const { error } = await supabase.from("pengeluaran").delete().eq("id", id);
-    if (!error) setExpenses((prev) => prev.filter((e) => e.id !== id));
+    if (error) {
+      showAlert({
+        title: "Gagal Menghapus",
+        message: error.message,
+        type: "danger",
+      });
+      return;
+    }
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function handleDeleteModal(id: string) {
-    if (!confirm("Hapus modal inventori ini?")) return;
+    const confirmed = await showConfirm({
+      title: "Hapus Modal Inventori",
+      message: "Apakah Anda yakin ingin menghapus data modal inventori ini?",
+      type: "danger",
+      confirmText: "Ya, Hapus",
+    });
+    if (!confirmed) return;
+
     const { error } = await supabase.from("modal").delete().eq("id", id);
-    if (!error) setModalItems((prev) => prev.filter((m) => m.id !== id));
+    if (error) {
+      showAlert({
+        title: "Gagal Menghapus",
+        message: error.message,
+        type: "danger",
+      });
+      return;
+    }
+    setModalItems((prev) => prev.filter((m) => m.id !== id));
   }
 
   return (

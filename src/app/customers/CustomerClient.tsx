@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { Customer, Transaksi } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { useDialog } from "@/components/ModalDialogProvider";
 
 interface Props {
   initialCustomers: Customer[];
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function CustomerClient({ initialCustomers, transactions = [] }: Props) {
+  const { showAlert } = useDialog();
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [search, setSearch] = useState("");
@@ -70,7 +72,11 @@ export function CustomerClient({ initialCustomers, transactions = [] }: Props) {
       .upload(filePath, file);
 
     if (uploadError) {
-      alert("Gagal upload foto: " + uploadError.message);
+      showAlert({
+        title: "Gagal Upload Foto",
+        message: uploadError.message,
+        type: "danger",
+      });
       setUploading(false);
       return;
     }
@@ -120,7 +126,11 @@ export function CustomerClient({ initialCustomers, transactions = [] }: Props) {
         .single();
 
       if (error) {
-        alert("Gagal update customer: " + error.message);
+        showAlert({
+          title: "Gagal Update Customer",
+          message: error.message,
+          type: "danger",
+        });
       } else if (data) {
         setCustomers((prev) => prev.map((c) => (c.id === data.id ? data : c)));
         setModalOpen(false);
@@ -133,7 +143,11 @@ export function CustomerClient({ initialCustomers, transactions = [] }: Props) {
         .single();
 
       if (error) {
-        alert("Gagal tambah customer: " + error.message);
+        showAlert({
+          title: "Gagal Tambah Customer",
+          message: error.message,
+          type: "danger",
+        });
       } else if (data) {
         setCustomers((prev) => [data, ...prev]);
         setModalOpen(false);

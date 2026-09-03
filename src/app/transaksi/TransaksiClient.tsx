@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { formatRupiah, formatDateIndo, calculateRentalDays } from "@/lib/utils";
+import { useDialog } from "@/components/ModalDialogProvider";
 import {
   checkBookingConflicts,
   getItemBookingAvailability,
@@ -117,6 +118,7 @@ function SearchableItemPicker({
   transactions = [],
   excludeTransactionId,
 }: SearchableItemPickerProps) {
+  const { showAlert } = useDialog();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -275,11 +277,13 @@ function SearchableItemPicker({
                         const who = availability?.conflictingBookings
                           ?.map((b) => `${b.nama_customer} (${formatDateIndo(b.tanggal_sewa)} - ${formatDateIndo(b.tanggal_kembali)})`)
                           .join(", ");
-                        alert(
-                          `⚠️ Tidak dapat memilih jas ini!\n\n"${inv.nama_jas}" sudah dibooking/disewa penuh pada rentang tanggal tersebut${
-                            who ? ` oleh: ${who}` : ""
-                          }.\n\nSilakan pilih jas lain atau ganti tanggal sewa.`
-                        );
+                        showAlert({
+                          title: "Tidak Dapat Memilih Jas Ini",
+                          message: `"${inv.nama_jas}" sudah dibooking/disewa penuh pada rentang tanggal tersebut${
+                            who ? ` oleh:\n• ${who}` : ""
+                          }.\n\nSilakan pilih jas lain atau ganti tanggal sewa.`,
+                          type: "warning",
+                        });
                         return;
                       }
                       onSelect(inv);
@@ -363,6 +367,7 @@ export function TransaksiClient({
   inventory,
   customers,
 }: Props) {
+  const { showAlert, showConfirm } = useDialog();
   const [transactions, setTransactions] = useState<Transaksi[]>(initialTransactions);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [search, setSearch] = useState("");
@@ -647,14 +652,22 @@ export function TransaksiClient({
 
     try {
       if (tanggalKembali < tanggalSewa) {
-        alert("Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.");
+        showAlert({
+          title: "Validasi Tanggal Sewa",
+          message: "Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.",
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
 
       const validItems = selectedItems.filter((i) => i.kodeJas && i.jumlah > 0);
       if (validItems.length === 0) {
-        alert("Pilih minimal 1 item sewa.");
+        showAlert({
+          title: "Pilih Item Sewa",
+          message: "Pilih minimal 1 item sewa untuk melanjutkan.",
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
@@ -677,13 +690,15 @@ export function TransaksiClient({
                   `${b.nama_customer} (${b.kode_transaksi}, ${formatDateIndo(b.tanggal_sewa).slice(0, 6)} - ${formatDateIndo(b.tanggal_kembali)})`
               )
               .join(", ");
-            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit. Sudah dibooking oleh: ${bookedBy}`;
+            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit.\n  Sudah dibooking oleh: ${bookedBy}`;
           })
           .join("\n\n");
 
-        alert(
-          `⚠️ BENTROK BOOKING (DOUBLE BOOKING TERDETEKSI):\n\nItem berikut tidak dapat disewa karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`
-        );
+        showAlert({
+          title: "Bentrok Jadwal Booking",
+          message: `Item berikut tidak dapat disewa karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`,
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
@@ -701,7 +716,11 @@ export function TransaksiClient({
         }
       } else {
         if (!newCustName) {
-          alert("Nama customer wajib diisi.");
+          showAlert({
+            title: "Data Pelanggan",
+            message: "Nama customer wajib diisi.",
+            type: "warning",
+          });
           setSaving(false);
           return;
         }
@@ -763,7 +782,11 @@ export function TransaksiClient({
         .single();
 
       if (error) {
-        alert("Gagal membuat transaksi: " + error.message);
+        showAlert({
+          title: "Gagal Membuat Transaksi",
+          message: error.message,
+          type: "danger",
+        });
         setSaving(false);
         return;
       }
@@ -788,14 +811,24 @@ export function TransaksiClient({
       setSelectedTx(data as Transaksi);
       setReceiptModalOpen(true);
     } catch (err: any) {
-      alert("Terjadi kesalahan: " + err.message);
+      showAlert({
+        title: "Terjadi Kesalahan",
+        message: err.message || "Gagal memproses transaksi.",
+        type: "danger",
+      });
     } finally {
       setSaving(false);
     }
   }
 
   async function handleConfirmPickup(tx: Transaksi) {
-    if (!confirm(`Konfirmasi pengambilan jas untuk transaksi ${tx.kode_transaksi}?`)) return;
+    const confirmed = await showConfirm({
+      title: "Konfirmasi Pengambilan",
+      message: `Konfirmasi pengambilan jas untuk transaksi ${tx.kode_transaksi}? Status akan berubah menjadi Sedang Disewa.`,
+      type: "info",
+      confirmText: "Ya, Ambil Jas",
+    });
+    if (!confirmed) return;
 
     const { data, error } = await supabase
       .from("transaksi")
@@ -805,7 +838,11 @@ export function TransaksiClient({
       .single();
 
     if (error) {
-      alert("Gagal update status: " + error.message);
+      showAlert({
+        title: "Gagal Update Status",
+        message: error.message,
+        type: "danger",
+      });
       return;
     }
 
@@ -829,7 +866,13 @@ export function TransaksiClient({
   }
 
   async function handleFinishTransaction(tx: Transaksi) {
-    if (!confirm(`Selesaikan transaksi ${tx.kode_transaksi} (jas sudah dikembalikan)?`)) return;
+    const confirmed = await showConfirm({
+      title: "Selesaikan Transaksi",
+      message: `Selesaikan transaksi ${tx.kode_transaksi}? Pastikan jas dan aksesoris sudah dikembalikan dalam kondisi baik.`,
+      type: "info",
+      confirmText: "Ya, Selesaikan",
+    });
+    if (!confirmed) return;
 
     const returnDate = todayStr;
     const { data, error } = await supabase
@@ -843,7 +886,11 @@ export function TransaksiClient({
       .single();
 
     if (error) {
-      alert("Gagal menyelesaikan transaksi: " + error.message);
+      showAlert({
+        title: "Gagal Menyelesaikan Transaksi",
+        message: error.message,
+        type: "danger",
+      });
       return;
     }
 
@@ -867,7 +914,13 @@ export function TransaksiClient({
   }
 
   async function handleCancelTransaction(tx: Transaksi) {
-    if (!confirm(`Batalkan transaksi ${tx.kode_transaksi}?`)) return;
+    const confirmed = await showConfirm({
+      title: "Batalkan Transaksi",
+      message: `Apakah Anda yakin ingin membatalkan transaksi ${tx.kode_transaksi}? Status akan diubah menjadi Dibatalkan.`,
+      type: "danger",
+      confirmText: "Ya, Batalkan",
+    });
+    if (!confirmed) return;
 
     const { data, error } = await supabase
       .from("transaksi")
@@ -877,7 +930,11 @@ export function TransaksiClient({
       .single();
 
     if (error) {
-      alert("Gagal membatalkan transaksi: " + error.message);
+      showAlert({
+        title: "Gagal Membatalkan Transaksi",
+        message: error.message,
+        type: "danger",
+      });
       return;
     }
 
@@ -991,14 +1048,22 @@ export function TransaksiClient({
 
     try {
       if (editTanggalKembali < editTanggalSewa) {
-        alert("Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.");
+        showAlert({
+          title: "Validasi Tanggal Sewa",
+          message: "Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.",
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
 
       const validItems = editSelectedItems.filter((i) => i.kodeJas && i.jumlah > 0);
       if (validItems.length === 0) {
-        alert("Pilih minimal 1 item sewa.");
+        showAlert({
+          title: "Pilih Item Sewa",
+          message: "Pilih minimal 1 item sewa.",
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
@@ -1022,13 +1087,15 @@ export function TransaksiClient({
                   `${b.nama_customer} (${b.kode_transaksi}, ${formatDateIndo(b.tanggal_sewa).slice(0, 6)} - ${formatDateIndo(b.tanggal_kembali)})`
               )
               .join(", ");
-            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit. Sudah dibooking oleh: ${bookedBy}`;
+            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit.\n  Sudah dibooking oleh: ${bookedBy}`;
           })
           .join("\n\n");
 
-        alert(
-          `⚠️ BENTROK BOOKING (DOUBLE BOOKING TERDETEKSI):\n\nItem berikut tidak dapat disimpan karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`
-        );
+        showAlert({
+          title: "Bentrok Jadwal Booking",
+          message: `Item berikut tidak dapat disimpan karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`,
+          type: "warning",
+        });
         setSaving(false);
         return;
       }
@@ -1070,7 +1137,11 @@ export function TransaksiClient({
         .single();
 
       if (error) {
-        alert("Gagal mengupdate transaksi: " + error.message);
+        showAlert({
+          title: "Gagal Mengupdate Transaksi",
+          message: error.message,
+          type: "danger",
+        });
         setSaving(false);
         return;
       }
@@ -1115,7 +1186,11 @@ export function TransaksiClient({
       }
       setEditModalOpen(false);
     } catch (err: any) {
-      alert("Terjadi kesalahan: " + (err.message || err));
+      showAlert({
+        title: "Terjadi Kesalahan",
+        message: err.message || String(err),
+        type: "danger",
+      });
     } finally {
       setSaving(false);
     }
@@ -1149,7 +1224,11 @@ export function TransaksiClient({
 
       const { error } = await supabase.from("transaksi").delete().eq("id", txToDelete.id);
       if (error) {
-        alert("Gagal menghapus transaksi: " + error.message);
+        showAlert({
+          title: "Gagal Menghapus Transaksi",
+          message: error.message,
+          type: "danger",
+        });
         setDeleting(false);
         return;
       }
@@ -1162,7 +1241,11 @@ export function TransaksiClient({
       setDeleteModalOpen(false);
       setTxToDelete(null);
     } catch (err: any) {
-      alert("Terjadi kesalahan saat menghapus: " + (err.message || err));
+      showAlert({
+        title: "Terjadi Kesalahan",
+        message: "Terjadi kesalahan saat menghapus: " + (err.message || String(err)),
+        type: "danger",
+      });
     } finally {
       setDeleting(false);
     }
@@ -1188,7 +1271,11 @@ export function TransaksiClient({
       .single();
 
     if (error) {
-      alert("Gagal update pembayaran: " + error.message);
+      showAlert({
+        title: "Gagal Update Pembayaran",
+        message: error.message,
+        type: "danger",
+      });
     } else {
       setTransactions((prev) => prev.map((t) => (t.id === selectedTx.id ? (data as Transaksi) : t)));
       setPayModalOpen(false);
@@ -1197,7 +1284,11 @@ export function TransaksiClient({
 
   async function shareToWhatsApp(tx: Transaksi) {
     if (!tx.whatsapp) {
-      alert("Nomor WhatsApp tidak tersedia.");
+      showAlert({
+        title: "Nomor WhatsApp Kosong",
+        message: "Nomor WhatsApp tidak tersedia untuk customer ini.",
+        type: "warning",
+      });
       return;
     }
 
@@ -1244,7 +1335,11 @@ File struk resmi terlampir. Terima kasih! 🙏`;
 
   async function sharePdfToWhatsApp(tx: Transaksi) {
     if (!tx.whatsapp) {
-      alert("Nomor WhatsApp tidak tersedia.");
+      showAlert({
+        title: "Nomor WhatsApp Kosong",
+        message: "Nomor WhatsApp tidak tersedia untuk customer ini.",
+        type: "warning",
+      });
       return;
     }
 
@@ -1293,7 +1388,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
       doc.save(`Struk_${selectedTx.kode_transaksi || "Sewa"}.pdf`);
     } catch (err) {
       console.error("Gagal mendownload PDF struk:", err);
-      alert("Gagal mendownload PDF struk.");
+      showAlert({
+        title: "Unduh Gagal",
+        message: "Gagal mendownload dokumen PDF struk.",
+        type: "danger",
+      });
     }
   }
 
@@ -1319,7 +1418,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      alert("Harap izinkan popup di browser untuk mencetak struk.");
+      showAlert({
+        title: "Izin Popup Browser",
+        message: "Harap izinkan popup di browser Anda untuk mencetak struk.",
+        type: "warning",
+      });
       return;
     }
 
@@ -1611,7 +1714,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
       document.body.removeChild(link);
     } catch (err) {
       console.error("Gagal mendownload gambar struk:", err);
-      alert("Gagal mendownload gambar struk.");
+      showAlert({
+        title: "Unduh Gagal",
+        message: "Gagal mendownload gambar struk.",
+        type: "danger",
+      });
     }
   }
 

@@ -5,12 +5,14 @@ import { formatRupiah, getDriveThumbnail } from "@/lib/utils";
 import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List, X } from "lucide-react";
 import type { Inventori } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { useDialog } from "@/components/ModalDialogProvider";
 
 interface Props {
   initialItems: Inventori[];
 }
 
 export function InventoriClient({ initialItems }: Props) {
+  const { showAlert, showConfirm } = useDialog();
   const [items, setItems] = useState<Inventori[]>(initialItems);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   const [search, setSearch] = useState("");
@@ -58,7 +60,11 @@ export function InventoriClient({ initialItems }: Props) {
       .upload(filePath, file);
 
     if (uploadError) {
-      alert("Gagal upload foto: " + uploadError.message);
+      showAlert({
+        title: "Gagal Upload Foto",
+        message: uploadError.message,
+        type: "danger",
+      });
       setUploading(false);
       return;
     }
@@ -117,7 +123,11 @@ export function InventoriClient({ initialItems }: Props) {
         .single();
 
       if (error) {
-        alert("Gagal update barang: " + error.message);
+        showAlert({
+          title: "Gagal Update Barang",
+          message: error.message,
+          type: "danger",
+        });
       } else if (data) {
         setItems((prev) => prev.map((item) => (item.id === data.id ? data : item)));
         setModalOpen(false);
@@ -130,7 +140,11 @@ export function InventoriClient({ initialItems }: Props) {
         .single();
 
       if (error) {
-        alert("Gagal menambah barang: " + error.message);
+        showAlert({
+          title: "Gagal Menambah Barang",
+          message: error.message,
+          type: "danger",
+        });
       } else if (data) {
         setItems((prev) => [data, ...prev]);
         setModalOpen(false);
@@ -141,11 +155,21 @@ export function InventoriClient({ initialItems }: Props) {
   }
 
   async function handleDelete(item: Inventori) {
-    if (!confirm(`Hapus barang ${item.nama_jas} (${item.kode_jas})?`)) return;
+    const confirmed = await showConfirm({
+      title: "Hapus Barang Inventori",
+      message: `Apakah Anda yakin ingin menghapus barang "${item.nama_jas}" (${item.kode_jas})? Data barang yang dihapus tidak dapat dipulihkan.`,
+      type: "danger",
+      confirmText: "Ya, Hapus",
+    });
+    if (!confirmed) return;
 
     const { error } = await supabase.from("inventori").delete().eq("id", item.id);
     if (error) {
-      alert("Gagal menghapus: " + error.message);
+      showAlert({
+        title: "Gagal Menghapus Barang",
+        message: error.message,
+        type: "danger",
+      });
     } else {
       setItems((prev) => prev.filter((i) => i.id !== item.id));
     }
