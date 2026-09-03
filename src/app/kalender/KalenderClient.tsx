@@ -21,6 +21,8 @@ import {
   Layers,
   Sparkles,
   Filter,
+  Tag,
+  Grid,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo, calculateRentalDays } from "@/lib/utils";
 import type { Transaksi, Inventori, Customer } from "@/types/database";
@@ -57,6 +59,8 @@ export function KalenderClient({
   const todayStr = today.toISOString().slice(0, 10);
 
   // Calendar view states
+  // Default is "kalender" mode as requested by user
+  const [mainMode, setMainMode] = useState<"kalender" | "gantt">("kalender");
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-indexed
   const [viewMode, setViewMode] = useState<"bulan" | "minggu">("bulan");
@@ -67,14 +71,20 @@ export function KalenderClient({
   // Filters & Search
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("Semua"); // Semua | Booking | Sedang Disewa | Terlambat | Selesai
+  const [ganttCategory, setGanttCategory] = useState<string>("Semua"); // Semua | Jas | Celana | Dasi | Lainnya
 
   // Modals
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
   const [dayEventsModalDate, setDayEventsModalDate] = useState<string | null>(null);
 
-  // Navigate month
+  // Days in currently selected month for Gantt Chart
+  const daysInCurrentMonth = useMemo(() => {
+    return new Date(currentYear, currentMonth + 1, 0).getDate();
+  }, [currentYear, currentMonth]);
+
+  // Navigate month or week
   function handlePrevMonth() {
-    if (viewMode === "bulan") {
+    if (mainMode === "gantt" || viewMode === "bulan") {
       if (currentMonth === 0) {
         setCurrentMonth(11);
         setCurrentYear((y) => y - 1);
@@ -92,7 +102,7 @@ export function KalenderClient({
   }
 
   function handleNextMonth() {
-    if (viewMode === "bulan") {
+    if (mainMode === "gantt" || viewMode === "bulan") {
       if (currentMonth === 11) {
         setCurrentMonth(0);
         setCurrentYear((y) => y + 1);
@@ -116,7 +126,7 @@ export function KalenderClient({
     setSelectedDate(d.toISOString().slice(0, 10));
   }
 
-  // Filtered transactions
+  // Filtered transactions (defensive against date anomaly or status filter)
   const activeTransactions = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -162,7 +172,6 @@ export function KalenderClient({
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const dayNum = daysInPrevMonth - i;
       const prevMonthDate = new Date(currentYear, currentMonth - 1, dayNum);
-      // Format YYYY-MM-DD
       const dateStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
       cells.push({
         dateStr,
@@ -230,12 +239,13 @@ export function KalenderClient({
     return weekDays;
   }, [selectedDate, todayStr]);
 
-  // Helper to get transactions active on a specific date
+  // Helper to get transactions active on a specific date (DEFENSIVE against return date anomalies)
   function getTransactionsOnDate(dateStr: string) {
     return activeTransactions.filter((tx) => {
       const start = tx.tanggal_sewa?.slice(0, 10);
-      const end = tx.tanggal_kembali?.slice(0, 10);
-      if (!start || !end) return false;
+      const rawEnd = tx.tanggal_kembali?.slice(0, 10);
+      if (!start) return false;
+      const end = rawEnd && rawEnd >= start ? rawEnd : start;
       return dateStr >= start && dateStr <= end;
     });
   }
@@ -303,6 +313,60 @@ export function KalenderClient({
     };
   }, [initialTransactions, currentYear, currentMonth]);
 
+  // Gantt Chart: Filtered Inventory List
+  const filteredInventoryForGantt = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return inventory.filter((inv) => {
+      // Category filter
+      if (ganttCategory !== "Semua") {
+        if (ganttCategory === "Lainnya") {
+          if (["Jas", "Celana", "Dasi"].includes(inv.jenis_jas)) return false;
+        } else if (inv.jenis_jas !== ganttCategory) {
+          return false;
+        }
+      }
+
+      // Search query
+      if (!q) return true;
+      return (
+        inv.nama_jas.toLowerCase().includes(q) ||
+        inv.kode_jas.toLowerCase().includes(q) ||
+        (inv.warna && inv.warna.toLowerCase().includes(q)) ||
+        (inv.ukuran && inv.ukuran.toLowerCase().includes(q))
+      );
+    });
+  }, [inventory, ganttCategory, search]);
+
+  // Gantt Chart: Array of days for the current month
+  const ganttDaysList = useMemo(() => {
+    const list: {
+      dayNum: number;
+      dateStr: string;
+      dayName: string;
+      isToday: boolean;
+      isWeekend: boolean;
+    }[] = [];
+
+    for (let d = 1; d <= daysInCurrentMonth; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dayObj = new Date(currentYear, currentMonth, d);
+      const dayIdx = dayObj.getDay(); // 0 = Sun, 6 = Sat
+      const indonesianDayIdx = (dayIdx + 6) % 7; // 0 = Mon, 6 = Sun
+      const dayName = DAY_NAMES[indonesianDayIdx];
+      const isWeekend = dayIdx === 0 || dayIdx === 6;
+
+      list.push({
+        dayNum: d,
+        dateStr,
+        dayName,
+        isToday: dateStr === todayStr,
+        isWeekend,
+      });
+    }
+
+    return list;
+  }, [currentYear, currentMonth, daysInCurrentMonth, todayStr]);
+
   return (
     <div className="p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-24 md:pb-8">
       {/* Top Header Card */}
@@ -310,43 +374,77 @@ export function KalenderClient({
         {/* Title */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-            <CalendarIcon className="w-5 h-5" />
+            {mainMode === "kalender" ? (
+              <CalendarIcon className="w-5 h-5" />
+            ) : (
+              <Layers className="w-5 h-5" />
+            )}
           </div>
           <div>
             <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-              Kalender Booking
+              {mainMode === "kalender" ? "Kalender Booking" : "Gantt Chart Jadwal Jas"}
             </h1>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Jadwal persewaan, booking aktif, dan pengembalian jas
+              {mainMode === "kalender"
+                ? "Jadwal persewaan, booking aktif, dan pengembalian jas"
+                : "Timeline visual ketersediaan jas & pemakaian per inventori"}
             </p>
           </div>
         </div>
 
-        {/* Controls: View Switcher & Month Navigation */}
+        {/* Controls: Mode Switcher, Sub-view & Navigation */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* View Toggle: Bulan | Minggu */}
+          {/* Main Mode Toggle: Kalender (Default) | Gantt Chart */}
           <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-1">
             <button
-              onClick={() => setViewMode("bulan")}
+              onClick={() => setMainMode("kalender")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "bulan"
+                mainMode === "kalender"
                   ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
               }`}
             >
-              <span>Bulan</span>
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>Kalender</span>
             </button>
             <button
-              onClick={() => setViewMode("minggu")}
+              onClick={() => setMainMode("gantt")}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                viewMode === "minggu"
+                mainMode === "gantt"
                   ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
               }`}
             >
-              <span>Minggu</span>
+              <Layers className="w-3.5 h-3.5" />
+              <span>Gantt Chart</span>
             </button>
           </div>
+
+          {/* Sub-view toggle when in Calendar mode: Bulan | Minggu */}
+          {mainMode === "kalender" && (
+            <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-1">
+              <button
+                onClick={() => setViewMode("bulan")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "bulan"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                <span>Bulan</span>
+              </button>
+              <button
+                onClick={() => setViewMode("minggu")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  viewMode === "minggu"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                <span>Minggu</span>
+              </button>
+            </div>
+          )}
 
           {/* Quick "Hari Ini" Button */}
           <button
@@ -367,7 +465,7 @@ export function KalenderClient({
             </button>
 
             <span className="px-3 font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 min-w-[120px] text-center font-sans">
-              {viewMode === "bulan"
+              {mainMode === "gantt" || viewMode === "bulan"
                 ? `${MONTH_NAMES[currentMonth]} ${currentYear}`
                 : `Minggu, ${formatDateIndo(weekCalendarDays[0].dateStr).slice(0, 6)} - ${formatDateIndo(weekCalendarDays[6].dateStr)}`}
             </span>
@@ -394,7 +492,7 @@ export function KalenderClient({
 
       {/* Legend & Filter Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3 sm:p-4 rounded-3xl">
-        {/* Status Filter Badges (As shown in reference image) */}
+        {/* Status Filter Badges */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <button
             onClick={() => setStatusFilter("Semua")}
@@ -450,7 +548,7 @@ export function KalenderClient({
         {/* Search Input & Legend Hint */}
         <div className="flex items-center gap-3">
           <span className="hidden lg:inline text-[11px] text-slate-400 font-medium font-mono">
-            ► hari mulai • ·· berjalan • ⮌ kembali
+            ► mulai • ·· berjalan • ⮌ kembali
           </span>
 
           <div className="relative w-full sm:w-56">
@@ -474,8 +572,174 @@ export function KalenderClient({
         </div>
       </div>
 
-      {/* Main Calendar Display */}
-      {viewMode === "bulan" ? (
+      {/* ================= GANTT CHART VIEW ================= */}
+      {mainMode === "gantt" ? (
+        <div className="space-y-3">
+          {/* Gantt Category Filter Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            {["Semua", "Jas", "Celana", "Dasi", "Lainnya"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setGanttCategory(cat)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border ${
+                  ganttCategory === cat
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+            <span className="text-[11px] text-slate-400 ml-auto hidden sm:inline">
+              Menampilkan {filteredInventoryForGantt.length} item inventori
+            </span>
+          </div>
+
+          {/* Gantt Timeline Container */}
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[900px] divide-y divide-slate-100 dark:divide-zinc-800/80">
+                {/* Timeline Header Row */}
+                <div className="flex bg-slate-50/90 dark:bg-zinc-950/90 sticky top-0 z-20 border-b border-slate-200 dark:border-zinc-800">
+                  {/* Left Column Header (Sticky) */}
+                  <div className="w-56 sm:w-64 shrink-0 px-3.5 py-3 font-bold text-xs text-slate-700 dark:text-zinc-300 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-slate-50 dark:bg-zinc-950 z-30 flex items-center justify-between">
+                    <span>Item Inventori</span>
+                    <span className="text-[10px] text-slate-400">Total Stok</span>
+                  </div>
+
+                  {/* Days of Month Header Columns */}
+                  <div
+                    className="grid flex-1"
+                    style={{
+                      gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(40px, 1fr))`,
+                    }}
+                  >
+                    {ganttDaysList.map((d) => (
+                      <div
+                        key={d.dayNum}
+                        className={`text-center py-2 border-r border-slate-100 dark:border-zinc-800/70 ${
+                          d.isWeekend ? "bg-slate-100/50 dark:bg-zinc-900/40" : ""
+                        }`}
+                      >
+                        <span className="text-[9.5px] font-bold text-slate-400 block uppercase leading-none">
+                          {d.dayName}
+                        </span>
+                        <span
+                          className={`inline-flex items-center justify-center text-xs font-bold mt-1 rounded-full ${
+                            d.isToday
+                              ? "w-5 h-5 bg-emerald-600 text-white font-black shadow-2xs"
+                              : "text-slate-800 dark:text-zinc-200"
+                          }`}
+                        >
+                          {d.dayNum}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Timeline Rows per Inventory Item */}
+                {filteredInventoryForGantt.length > 0 ? (
+                  filteredInventoryForGantt.map((inv) => {
+                    const monthStartStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
+                    const monthEndStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(daysInCurrentMonth).padStart(2, "0")}`;
+
+                    // Find bookings for this specific inventory item that overlap with current month
+                    const itemBookings = activeTransactions.filter((tx) => {
+                      const hasItem = Array.isArray(tx.items) && tx.items.some((i) => i.kodeJas === inv.kode_jas);
+                      if (!hasItem) return false;
+
+                      const s = tx.tanggal_sewa?.slice(0, 10);
+                      const rawE = tx.tanggal_kembali?.slice(0, 10);
+                      if (!s) return false;
+                      const e = rawE && rawE >= s ? rawE : s;
+
+                      return s <= monthEndStr && e >= monthStartStr;
+                    });
+
+                    return (
+                      <div key={inv.id || inv.kode_jas} className="flex hover:bg-slate-50/40 dark:hover:bg-zinc-800/20 transition group">
+                        {/* Sticky Left Item Info */}
+                        <div className="w-56 sm:w-64 shrink-0 px-3.5 py-3 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-white dark:bg-zinc-900 group-hover:bg-slate-50/90 dark:group-hover:bg-zinc-850 z-10">
+                          <p className="font-bold text-xs text-slate-900 dark:text-zinc-100 truncate" title={inv.nama_jas}>
+                            {inv.nama_jas}
+                          </p>
+                          <div className="flex items-center justify-between mt-0.5 text-[10.5px] text-slate-500 dark:text-zinc-400">
+                            <span>
+                              {inv.warna || "-"} • {inv.ukuran || "-"}
+                            </span>
+                            <span className="font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300">
+                              {inv.jumlah_stok ?? inv.stok_tersedia ?? 1} unit
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Days Grid & Booking Bars */}
+                        <div
+                          className="relative flex-1 grid py-2"
+                          style={{
+                            gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(40px, 1fr))`,
+                            minHeight: itemBookings.length > 0 ? "52px" : "44px",
+                          }}
+                        >
+                          {/* Background Grid Cells */}
+                          {ganttDaysList.map((d) => (
+                            <Link
+                              key={d.dayNum}
+                              href="/transaksi"
+                              className={`border-r border-slate-100 dark:border-zinc-800/60 h-full flex items-center justify-center transition opacity-0 hover:opacity-100 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 text-indigo-600 ${
+                                d.isWeekend ? "bg-slate-50/30 dark:bg-zinc-950/20" : ""
+                              }`}
+                              title={`Klik untuk buat sewa ${inv.nama_jas} pada ${d.dateStr}`}
+                            >
+                              <Plus className="w-3 h-3 text-slate-400" />
+                            </Link>
+                          ))}
+
+                          {/* Event Bars Overlay */}
+                          {itemBookings.map((tx) => {
+                            const s = tx.tanggal_sewa?.slice(0, 10) || monthStartStr;
+                            const rawE = tx.tanggal_kembali?.slice(0, 10) || s;
+                            const e = rawE >= s ? rawE : s;
+
+                            // Calculate column start and end (1-indexed, inclusive)
+                            const startCol = s < monthStartStr ? 1 : Math.max(1, parseInt(s.slice(8, 10), 10));
+                            const endCol = e > monthEndStr ? daysInCurrentMonth : Math.min(daysInCurrentMonth, parseInt(e.slice(8, 10), 10));
+
+                            const style = getStatusStyle(tx.status);
+
+                            return (
+                              <button
+                                key={tx.id || tx.kode_transaksi}
+                                onClick={() => setSelectedTx(tx)}
+                                style={{
+                                  gridColumn: `${startCol} / ${endCol + 1}`,
+                                }}
+                                className={`absolute inset-y-2 left-1 right-1 z-10 px-2 rounded-xl text-[10.5px] font-bold border flex items-center gap-1.5 shadow-xs transition active:scale-98 cursor-pointer truncate ${style.pill}`}
+                                title={`${tx.nama_customer} (${tx.status}) — ${tx.kode_transaksi}\nPeriode: ${formatDateIndo(tx.tanggal_sewa)} s/d ${formatDateIndo(tx.tanggal_kembali)}`}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-current opacity-70" />
+                                <span className="truncate">{tx.nama_customer}</span>
+                                <span className="opacity-70 font-mono text-[9.5px] hidden sm:inline shrink-0">
+                                  ({tx.status})
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-xs text-slate-400 dark:text-zinc-500">
+                    Tidak ada item inventori yang cocok dengan filter atau pencarian &quot;{search}&quot;.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : viewMode === "bulan" ? (
         /* ================= BULAN (MONTH GRID VIEW) ================= */
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
           {/* Day Headers (SEN, SEL, RAB, KAM, JUM, SAB, MIN) */}
@@ -542,8 +806,12 @@ export function KalenderClient({
                   <div className="space-y-1 flex-1 overflow-hidden">
                     {displayedEvents.map((tx) => {
                       const style = getStatusStyle(tx.status);
-                      const isStart = tx.tanggal_sewa?.slice(0, 10) === cell.dateStr;
-                      const isEnd = tx.tanggal_kembali?.slice(0, 10) === cell.dateStr;
+                      const s = tx.tanggal_sewa?.slice(0, 10);
+                      const rawE = tx.tanggal_kembali?.slice(0, 10);
+                      const e = rawE && rawE >= s ? rawE : s;
+
+                      const isStart = s === cell.dateStr;
+                      const isEnd = e === cell.dateStr;
 
                       let indicator = "··";
                       if (isStart) indicator = "►";
@@ -623,8 +891,12 @@ export function KalenderClient({
                     {dayEvents.length > 0 ? (
                       dayEvents.map((tx) => {
                         const style = getStatusStyle(tx.status);
-                        const isStart = tx.tanggal_sewa?.slice(0, 10) === wDay.dateStr;
-                        const isEnd = tx.tanggal_kembali?.slice(0, 10) === wDay.dateStr;
+                        const s = tx.tanggal_sewa?.slice(0, 10);
+                        const rawE = tx.tanggal_kembali?.slice(0, 10);
+                        const e = rawE && rawE >= s ? rawE : s;
+
+                        const isStart = s === wDay.dateStr;
+                        const isEnd = e === wDay.dateStr;
 
                         return (
                           <div
@@ -862,8 +1134,12 @@ export function KalenderClient({
             <div className="p-4 space-y-2 overflow-y-auto flex-1 text-xs">
               {getTransactionsOnDate(dayEventsModalDate).map((tx) => {
                 const style = getStatusStyle(tx.status);
-                const isStart = tx.tanggal_sewa?.slice(0, 10) === dayEventsModalDate;
-                const isEnd = tx.tanggal_kembali?.slice(0, 10) === dayEventsModalDate;
+                const s = tx.tanggal_sewa?.slice(0, 10);
+                const rawE = tx.tanggal_kembali?.slice(0, 10);
+                const e = rawE && rawE >= s ? rawE : s;
+
+                const isStart = s === dayEventsModalDate;
+                const isEnd = e === dayEventsModalDate;
 
                 return (
                   <div

@@ -4,6 +4,10 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { formatRupiah, formatDateIndo, calculateRentalDays } from "@/lib/utils";
 import {
+  checkBookingConflicts,
+  getItemBookingAvailability,
+} from "@/lib/bookingValidation";
+import {
   Plus,
   Search,
   ReceiptText,
@@ -15,6 +19,7 @@ import {
   Clock,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   LayoutGrid,
   List,
   MessageCircle,
@@ -29,7 +34,6 @@ import {
   Edit2,
   ArrowUpDown,
   X,
-  AlertCircle,
   MapPin,
 } from "lucide-react";
 import type { Transaksi, Inventori, Customer, TransactionItem } from "@/types/database";
@@ -98,12 +102,20 @@ interface SearchableItemPickerProps {
   inventory: Inventori[];
   selectedCode: string;
   onSelect: (item: Inventori) => void;
+  startDate?: string;
+  returnDate?: string;
+  transactions?: Transaksi[];
+  excludeTransactionId?: string;
 }
 
 function SearchableItemPicker({
   inventory,
   selectedCode,
   onSelect,
+  startDate,
+  returnDate,
+  transactions = [],
+  excludeTransactionId,
 }: SearchableItemPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -111,6 +123,17 @@ function SearchableItemPicker({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedItem = inventory.find((i) => i.kode_jas === selectedCode);
+
+  const selectedAvailability = useMemo(() => {
+    if (!selectedItem || !startDate || !returnDate) return null;
+    return getItemBookingAvailability({
+      item: selectedItem,
+      startDate,
+      returnDate,
+      transactions,
+      excludeTransactionId,
+    });
+  }, [selectedItem, startDate, returnDate, transactions, excludeTransactionId]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -147,7 +170,11 @@ function SearchableItemPicker({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-left text-xs text-slate-900 dark:text-zinc-100 flex items-center justify-between gap-2 transition hover:border-slate-300 dark:hover:border-zinc-700 shadow-sm cursor-pointer"
+        className={`w-full bg-white dark:bg-zinc-900 border rounded-xl px-3 py-2 text-left text-xs text-slate-900 dark:text-zinc-100 flex items-center justify-between gap-2 transition shadow-sm cursor-pointer ${
+          selectedAvailability?.isFullyBooked
+            ? "border-rose-400 bg-rose-50/30 dark:border-rose-800 dark:bg-rose-950/20"
+            : "border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700"
+        }`}
       >
         {selectedItem ? (
           <div className="truncate flex-1">
@@ -155,8 +182,25 @@ function SearchableItemPicker({
               {selectedItem.nama_jas}
             </span>
             <span className="text-slate-500 dark:text-zinc-400 ml-1.5 text-[11px]">
-              ({selectedItem.warna || "-"}/{selectedItem.ukuran || "-"}) • Stok: {selectedItem.stok_tersedia}
+              ({selectedItem.warna || "-"}/{selectedItem.ukuran || "-"})
             </span>
+            {selectedAvailability ? (
+              <span
+                className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                  selectedAvailability.isFullyBooked
+                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
+                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                }`}
+              >
+                {selectedAvailability.isFullyBooked
+                  ? "Sudah Dibooking"
+                  : `Tersedia: ${selectedAvailability.availableQty}/${selectedAvailability.totalStock}`}
+              </span>
+            ) : (
+              <span className="text-slate-400 dark:text-zinc-500 ml-1.5 text-[11px]">
+                • Stok: {selectedItem.stok_tersedia}
+              </span>
+            )}
           </div>
         ) : (
           <span className="text-slate-400 dark:text-zinc-500 flex items-center gap-1.5">
@@ -167,9 +211,20 @@ function SearchableItemPicker({
         <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
+      {/* Warning if selected item is already booked */}
+      {selectedAvailability?.isFullyBooked && (
+        <p className="mt-1 text-[10.5px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2 py-0.5 rounded-lg">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>
+            Jas ini sudah dibooking pada tanggal tersebut oleh{" "}
+            {selectedAvailability.conflictingBookings.map((b) => b.nama_customer).join(", ")}!
+          </span>
+        </p>
+      )}
+
       {/* Popover Dropdown */}
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-full sm:min-w-[320px] max-w-[420px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-64 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-full mt-1.5 w-full sm:min-w-[340px] max-w-[460px] bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-64 animate-in fade-in zoom-in-95 duration-100">
           {/* Search Box */}
           <div className="p-2 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/60 flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-slate-400 ml-1" />
@@ -197,42 +252,90 @@ function SearchableItemPicker({
             {filtered.length > 0 ? (
               filtered.map((inv) => {
                 const isSelected = inv.kode_jas === selectedCode;
-                const isOutOfStock = inv.stok_tersedia <= 0;
+                const availability = startDate && returnDate
+                  ? getItemBookingAvailability({
+                      item: inv,
+                      startDate,
+                      returnDate,
+                      transactions,
+                      excludeTransactionId,
+                    })
+                  : null;
+
+                const isFullyBooked = availability
+                  ? availability.isFullyBooked
+                  : inv.stok_tersedia <= 0;
 
                 return (
                   <button
                     key={inv.id || inv.kode_jas}
                     type="button"
                     onClick={() => {
+                      if (isFullyBooked) {
+                        const who = availability?.conflictingBookings
+                          ?.map((b) => `${b.nama_customer} (${formatDateIndo(b.tanggal_sewa)} - ${formatDateIndo(b.tanggal_kembali)})`)
+                          .join(", ");
+                        alert(
+                          `⚠️ Tidak dapat memilih jas ini!\n\n"${inv.nama_jas}" sudah dibooking/disewa penuh pada rentang tanggal tersebut${
+                            who ? ` oleh: ${who}` : ""
+                          }.\n\nSilakan pilih jas lain atau ganti tanggal sewa.`
+                        );
+                        return;
+                      }
                       onSelect(inv);
                       setOpen(false);
                     }}
                     className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between gap-2 transition cursor-pointer ${
                       isSelected
                         ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800"
+                        : isFullyBooked
+                        ? "opacity-60 bg-slate-50 dark:bg-zinc-950/40 hover:opacity-100"
                         : "hover:bg-slate-50 dark:hover:bg-zinc-800/60 text-slate-800 dark:text-zinc-200"
                     }`}
                   >
-                    <div className="truncate">
-                      <p className="font-bold truncate">{inv.nama_jas}</p>
+                    <div className="truncate flex-1">
+                      <p className={`font-bold truncate ${isFullyBooked ? "text-slate-500 line-through" : ""}`}>
+                        {inv.nama_jas}
+                      </p>
                       <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                         {inv.warna || "-"} • Ukuran: <b className="text-slate-700 dark:text-zinc-300">{inv.ukuran || "-"}</b> • {inv.jenis_jas}
                       </p>
+                      {isFullyBooked && availability?.conflictingBookings?.length ? (
+                        <p className="text-[10px] text-rose-500 font-semibold truncate mt-0.5">
+                          Dibooking: {availability.conflictingBookings[0].nama_customer} (
+                          {formatDateIndo(availability.conflictingBookings[0].tanggal_sewa).slice(0, 6)} -{" "}
+                          {formatDateIndo(availability.conflictingBookings[0].tanggal_kembali).slice(0, 6)})
+                        </p>
+                      ) : null}
                     </div>
 
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 ml-2">
                       <p className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
                         {formatRupiah(inv.harga_default)}
                       </p>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.2 rounded-md font-semibold ${
-                          isOutOfStock
-                            ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
-                            : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
-                        }`}
-                      >
-                        Stok: {inv.stok_tersedia}
-                      </span>
+                      {availability ? (
+                        <span
+                          className={`text-[9.5px] px-1.5 py-0.5 rounded-md font-bold inline-block mt-0.5 ${
+                            availability.isFullyBooked
+                              ? "bg-rose-50 text-rose-600 dark:bg-rose-950/70 dark:text-rose-400 border border-rose-200 dark:border-rose-900"
+                              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900"
+                          }`}
+                        >
+                          {availability.isFullyBooked
+                            ? "Sudah Dibooking"
+                            : `Sisa: ${availability.availableQty}/${availability.totalStock}`}
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-md font-semibold ${
+                            inv.stok_tersedia <= 0
+                              ? "bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
+                              : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          Stok: {inv.stok_tersedia}
+                        </span>
+                      )}
                     </div>
                   </button>
                 );
@@ -355,7 +458,12 @@ export function TransaksiClient({
 
   function handleTanggalSewaChange(newStart: string) {
     setTanggalSewa(newStart);
-    const newDays = calculateRentalDays(newStart, tanggalKembali);
+    let newEnd = tanggalKembali;
+    if (newEnd && newEnd < newStart) {
+      newEnd = newStart;
+      setTanggalKembali(newStart);
+    }
+    const newDays = calculateRentalDays(newStart, newEnd);
     setSelectedItems((prev) =>
       prev.map((item) => {
         const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
@@ -387,7 +495,12 @@ export function TransaksiClient({
 
   function handleEditTanggalSewaChange(newStart: string) {
     setEditTanggalSewa(newStart);
-    const newDays = calculateRentalDays(newStart, editTanggalKembali);
+    let newEnd = editTanggalKembali;
+    if (newEnd && newEnd < newStart) {
+      newEnd = newStart;
+      setEditTanggalKembali(newStart);
+    }
+    const newDays = calculateRentalDays(newStart, newEnd);
     setEditSelectedItems((prev) =>
       prev.map((item) => {
         const daily = item.harga_per_hari ?? (item.durasi_hari ? Math.round(item.harga / item.durasi_hari) : item.harga);
@@ -533,9 +646,44 @@ export function TransaksiClient({
     setSaving(true);
 
     try {
+      if (tanggalKembali < tanggalSewa) {
+        alert("Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.");
+        setSaving(false);
+        return;
+      }
+
       const validItems = selectedItems.filter((i) => i.kodeJas && i.jumlah > 0);
       if (validItems.length === 0) {
         alert("Pilih minimal 1 item sewa.");
+        setSaving(false);
+        return;
+      }
+
+      // Check double booking conflicts across all items
+      const conflicts = checkBookingConflicts({
+        startDate: tanggalSewa,
+        returnDate: tanggalKembali,
+        items: validItems,
+        transactions,
+        inventory,
+      });
+
+      if (conflicts.length > 0) {
+        const details = conflicts
+          .map((c) => {
+            const bookedBy = c.conflictingBookings
+              .map(
+                (b) =>
+                  `${b.nama_customer} (${b.kode_transaksi}, ${formatDateIndo(b.tanggal_sewa).slice(0, 6)} - ${formatDateIndo(b.tanggal_kembali)})`
+              )
+              .join(", ");
+            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit. Sudah dibooking oleh: ${bookedBy}`;
+          })
+          .join("\n\n");
+
+        alert(
+          `⚠️ BENTROK BOOKING (DOUBLE BOOKING TERDETEKSI):\n\nItem berikut tidak dapat disewa karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`
+        );
         setSaving(false);
         return;
       }
@@ -842,9 +990,45 @@ export function TransaksiClient({
     setSaving(true);
 
     try {
+      if (editTanggalKembali < editTanggalSewa) {
+        alert("Tanggal wajib kembali tidak boleh sebelum tanggal mulai sewa.");
+        setSaving(false);
+        return;
+      }
+
       const validItems = editSelectedItems.filter((i) => i.kodeJas && i.jumlah > 0);
       if (validItems.length === 0) {
         alert("Pilih minimal 1 item sewa.");
+        setSaving(false);
+        return;
+      }
+
+      // Check double booking conflicts, excluding the current transaction being edited
+      const conflicts = checkBookingConflicts({
+        startDate: editTanggalSewa,
+        returnDate: editTanggalKembali,
+        items: validItems,
+        transactions,
+        inventory,
+        excludeTransactionId: editingTx.id,
+      });
+
+      if (conflicts.length > 0) {
+        const details = conflicts
+          .map((c) => {
+            const bookedBy = c.conflictingBookings
+              .map(
+                (b) =>
+                  `${b.nama_customer} (${b.kode_transaksi}, ${formatDateIndo(b.tanggal_sewa).slice(0, 6)} - ${formatDateIndo(b.tanggal_kembali)})`
+              )
+              .join(", ");
+            return `• ${c.namaJas}: Sisa kuota ${c.availableQty} unit dari total ${c.totalStock} unit. Sudah dibooking oleh: ${bookedBy}`;
+          })
+          .join("\n\n");
+
+        alert(
+          `⚠️ BENTROK BOOKING (DOUBLE BOOKING TERDETEKSI):\n\nItem berikut tidak dapat disimpan karena kuota sudah penuh pada rentang tanggal tersebut:\n\n${details}\n\nSilakan pilih tanggal lain atau ganti item sewa.`
+        );
         setSaving(false);
         return;
       }
@@ -1960,6 +2144,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                     <input
                       type="date"
                       required
+                      min={tanggalSewa}
                       value={tanggalKembali}
                       onChange={(e) => handleTanggalKembaliChange(e.target.value)}
                       className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-slate-900 dark:text-zinc-100 text-xs outline-none font-mono"
@@ -2038,6 +2223,9 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                             <SearchableItemPicker
                               inventory={inventory}
                               selectedCode={item.kodeJas}
+                              startDate={tanggalSewa}
+                              returnDate={tanggalKembali}
+                              transactions={transactions}
                               onSelect={(inv) => {
                                 const dailyPrice = Number(inv.harga_default || 0);
                                 setSelectedItems((prev) => {
@@ -2914,6 +3102,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                   <input
                     type="date"
                     required
+                    min={editTanggalSewa}
                     value={editTanggalKembali}
                     onChange={(e) => handleEditTanggalKembaliChange(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 font-mono"
@@ -2979,23 +3168,39 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                         className="p-3 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-2"
                       >
                         <div className="flex items-center gap-2">
-                          <select
-                            value={item.kodeJas}
-                            onChange={(e) => handleEditItemChange(idx, e.target.value)}
-                            className="flex-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-zinc-100 outline-none font-medium"
-                          >
-                            <option value="">-- Pilih Item Inventori --</option>
-                            {inventory.map((inv) => (
-                              <option key={inv.id} value={inv.kode_jas}>
-                                {inv.nama_jas} ({inv.warna || "-"}, {inv.ukuran || "-"}) — Rp {formatThousand(Number(inv.harga_default || 0))}/hr
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1 min-w-0">
+                            <SearchableItemPicker
+                              inventory={inventory}
+                              selectedCode={item.kodeJas}
+                              startDate={editTanggalSewa}
+                              returnDate={editTanggalKembali}
+                              transactions={transactions}
+                              excludeTransactionId={editingTx.id}
+                              onSelect={(inv) => {
+                                const daily = Number(inv.harga_default || 0);
+                                setEditSelectedItems((prev) => {
+                                  const next = [...prev];
+                                  next[idx] = {
+                                    kodeJas: inv.kode_jas,
+                                    namaJas: inv.nama_jas,
+                                    jenisJas: inv.jenis_jas,
+                                    warna: inv.warna,
+                                    ukuran: inv.ukuran,
+                                    jumlah: next[idx]?.jumlah || 1,
+                                    harga_per_hari: daily,
+                                    durasi_hari: editRentalDays,
+                                    harga: daily * editRentalDays,
+                                  };
+                                  return next;
+                                });
+                              }}
+                            />
+                          </div>
 
                           <button
                             type="button"
                             onClick={() => removeEditItemRow(idx)}
-                            className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer"
+                            className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl cursor-pointer shrink-0"
                             title="Hapus baris item"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
