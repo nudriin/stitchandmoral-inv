@@ -65,7 +65,7 @@ export function KalenderClient({
   const [currentMonth, setCurrentMonth] = useState(today.getMonth()); // 0-indexed
   const [viewMode, setViewMode] = useState<"bulan" | "minggu">("bulan");
 
-  // Selected date for week view or day preview
+  // Selected date for agenda preview or week view
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   // Filters & Search
@@ -95,7 +95,8 @@ export function KalenderClient({
       // Prev week
       const d = new Date(selectedDate);
       d.setDate(d.getDate() - 7);
-      setSelectedDate(d.toISOString().slice(0, 10));
+      const newDateStr = d.toISOString().slice(0, 10);
+      setSelectedDate(newDateStr);
       setCurrentMonth(d.getMonth());
       setCurrentYear(d.getFullYear());
     }
@@ -113,7 +114,8 @@ export function KalenderClient({
       // Next week
       const d = new Date(selectedDate);
       d.setDate(d.getDate() + 7);
-      setSelectedDate(d.toISOString().slice(0, 10));
+      const newDateStr = d.toISOString().slice(0, 10);
+      setSelectedDate(newDateStr);
       setCurrentMonth(d.getMonth());
       setCurrentYear(d.getFullYear());
     }
@@ -250,6 +252,11 @@ export function KalenderClient({
     });
   }
 
+  // Active bookings on the currently selected date (for Mobile Agenda Card)
+  const selectedDayEvents = useMemo(() => {
+    return getTransactionsOnDate(selectedDate);
+  }, [selectedDate, activeTransactions]);
+
   // Get status pill styling
   function getStatusStyle(status: string) {
     switch (status) {
@@ -368,135 +375,250 @@ export function KalenderClient({
   }, [currentYear, currentMonth, daysInCurrentMonth, todayStr]);
 
   return (
-    <div className="p-3.5 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-24 md:pb-8">
-      {/* Top Header Card */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 sm:p-5 rounded-3xl shadow-xs">
-        {/* Title */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-            {mainMode === "kalender" ? (
-              <CalendarIcon className="w-5 h-5" />
-            ) : (
-              <Layers className="w-5 h-5" />
-            )}
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-              {mainMode === "kalender" ? "Kalender Booking" : "Gantt Chart Jadwal Jas"}
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-zinc-400">
-              {mainMode === "kalender"
-                ? "Jadwal persewaan, booking aktif, dan pengembalian jas"
-                : "Timeline visual ketersediaan jas & pemakaian per inventori"}
-            </p>
-          </div>
-        </div>
-
-        {/* Controls: Mode Switcher, Sub-view & Navigation */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Main Mode Toggle: Kalender (Default) | Gantt Chart */}
-          <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-1">
-            <button
-              onClick={() => setMainMode("kalender")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                mainMode === "kalender"
-                  ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              <CalendarIcon className="w-3.5 h-3.5" />
-              <span>Kalender</span>
-            </button>
-            <button
-              onClick={() => setMainMode("gantt")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                mainMode === "gantt"
-                  ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>Gantt Chart</span>
-            </button>
+    <div className="p-2.5 sm:p-6 lg:p-8 space-y-3.5 sm:space-y-6 max-w-7xl mx-auto pb-24 md:pb-8">
+      {/* ================= TOP HEADER CARD (RESPONSIVE) ================= */}
+      <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3.5 sm:p-5 rounded-3xl shadow-xs space-y-3 sm:space-y-4">
+        {/* Desktop Header Layout */}
+        <div className="hidden md:flex md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              {mainMode === "kalender" ? (
+                <CalendarIcon className="w-5 h-5" />
+              ) : (
+                <Layers className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+                {mainMode === "kalender" ? "Kalender Booking" : "Gantt Chart Jadwal Jas"}
+              </h1>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
+                {mainMode === "kalender"
+                  ? "Jadwal persewaan, booking aktif, dan pengembalian jas"
+                  : "Timeline visual ketersediaan jas & pemakaian per inventori"}
+              </p>
+            </div>
           </div>
 
-          {/* Sub-view toggle when in Calendar mode: Bulan | Minggu */}
-          {mainMode === "kalender" && (
+          <div className="flex items-center gap-2.5">
+            {/* Main Mode Toggle: Kalender | Gantt */}
             <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-1">
               <button
-                onClick={() => setViewMode("bulan")}
+                onClick={() => setMainMode("kalender")}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                  viewMode === "bulan"
+                  mainMode === "kalender"
                     ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
                     : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
                 }`}
               >
-                <span>Bulan</span>
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span>Kalender</span>
+              </button>
+              <button
+                onClick={() => setMainMode("gantt")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  mainMode === "gantt"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Gantt Chart</span>
+              </button>
+            </div>
+
+            {/* Sub-view toggle when in Calendar mode: Bulan | Minggu */}
+            {mainMode === "kalender" && (
+              <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-2xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-1">
+                <button
+                  onClick={() => setViewMode("bulan")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    viewMode === "bulan"
+                      ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  <span>Bulan</span>
+                </button>
+                <button
+                  onClick={() => setViewMode("minggu")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    viewMode === "minggu"
+                      ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  <span>Minggu</span>
+                </button>
+              </div>
+            )}
+
+            {/* Quick "Hari Ini" Button */}
+            <button
+              onClick={handleGoToday}
+              className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 transition cursor-pointer"
+            >
+              Hari ini
+            </button>
+
+            {/* Month/Week Navigation */}
+            <div className="flex items-center gap-1 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1 shadow-2xs">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1.5 rounded-xl text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="px-3 font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 min-w-[120px] text-center font-sans">
+                {mainMode === "gantt" || viewMode === "bulan"
+                  ? `${MONTH_NAMES[currentMonth]} ${currentYear}`
+                  : `Minggu, ${formatDateIndo(weekCalendarDays[0].dateStr).slice(0, 6)} - ${formatDateIndo(weekCalendarDays[6].dateStr)}`}
+              </span>
+
+              <button
+                onClick={handleNextMonth}
+                className="p-1.5 rounded-xl text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Berikutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* New Transaction Button */}
+            <Link
+              href="/transaksi"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold rounded-2xl flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Buat Sewa</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Mobile Header Layout (Clean, Multi-Row, No Overlapping) */}
+        <div className="flex flex-col md:hidden space-y-2.5">
+          {/* Row 1: Title & Main Mode Switcher */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                {mainMode === "kalender" ? (
+                  <CalendarIcon className="w-4 h-4" />
+                ) : (
+                  <Layers className="w-4 h-4" />
+                )}
+              </div>
+              <h1 className="text-base font-black tracking-tight text-slate-900 dark:text-zinc-100">
+                {mainMode === "kalender" ? "Kalender" : "Gantt Chart"}
+              </h1>
+            </div>
+
+            {/* Mode Toggle: Kalender | Gantt */}
+            <div className="bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl border border-slate-200/80 dark:border-zinc-800/80 flex items-center gap-0.5">
+              <button
+                onClick={() => setMainMode("kalender")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  mainMode === "kalender"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <CalendarIcon className="w-3 h-3" />
+                <span>Kalender</span>
+              </button>
+              <button
+                onClick={() => setMainMode("gantt")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  mainMode === "gantt"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <Layers className="w-3 h-3" />
+                <span>Gantt</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Month Navigation, Today, & Create Button */}
+          <div className="flex items-center justify-between gap-1.5">
+            {/* Month Navigation Control */}
+            <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 shadow-2xs flex-1">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1 rounded-lg text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-800 transition"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="flex-1 text-center font-bold text-xs text-slate-900 dark:text-zinc-100 truncate px-1">
+                {mainMode === "gantt" || viewMode === "bulan"
+                  ? `${MONTH_NAMES[currentMonth]} ${currentYear}`
+                  : `${formatDateIndo(weekCalendarDays[0].dateStr).slice(0, 6)} - ${formatDateIndo(weekCalendarDays[6].dateStr)}`}
+              </span>
+
+              <button
+                onClick={handleNextMonth}
+                className="p-1 rounded-lg text-slate-600 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-800 transition"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Today Button */}
+            <button
+              onClick={handleGoToday}
+              className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 transition shrink-0"
+            >
+              Hari ini
+            </button>
+
+            {/* Quick Create Link */}
+            <Link
+              href="/transaksi"
+              className="px-2.5 py-1.5 bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950 text-xs font-bold rounded-xl flex items-center gap-1 transition shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Sewa</span>
+            </Link>
+          </div>
+
+          {/* Row 3: Sub-view switch (Bulan / Minggu) if in Calendar mode */}
+          {mainMode === "kalender" && (
+            <div className="grid grid-cols-2 bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl border border-slate-200/80 dark:border-zinc-800/80 gap-1">
+              <button
+                onClick={() => setViewMode("bulan")}
+                className={`py-1 rounded-lg text-xs font-bold text-center transition ${
+                  viewMode === "bulan"
+                    ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
+                    : "text-slate-500"
+                }`}
+              >
+                Tampilan Bulan
               </button>
               <button
                 onClick={() => setViewMode("minggu")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                className={`py-1 rounded-lg text-xs font-bold text-center transition ${
                   viewMode === "minggu"
                     ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs"
-                    : "text-slate-500 hover:text-slate-900 dark:hover:text-zinc-100"
+                    : "text-slate-500"
                 }`}
               >
-                <span>Minggu</span>
+                Tampilan Minggu
               </button>
             </div>
           )}
-
-          {/* Quick "Hari Ini" Button */}
-          <button
-            onClick={handleGoToday}
-            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 transition cursor-pointer"
-          >
-            Hari ini
-          </button>
-
-          {/* Month/Week Navigation */}
-          <div className="flex items-center gap-1 bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl p-1 shadow-2xs">
-            <button
-              onClick={handlePrevMonth}
-              className="p-1.5 rounded-xl text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              title="Sebelumnya"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <span className="px-3 font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 min-w-[120px] text-center font-sans">
-              {mainMode === "gantt" || viewMode === "bulan"
-                ? `${MONTH_NAMES[currentMonth]} ${currentYear}`
-                : `Minggu, ${formatDateIndo(weekCalendarDays[0].dateStr).slice(0, 6)} - ${formatDateIndo(weekCalendarDays[6].dateStr)}`}
-            </span>
-
-            <button
-              onClick={handleNextMonth}
-              className="p-1.5 rounded-xl text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition cursor-pointer"
-              title="Berikutnya"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* New Transaction Button */}
-          <Link
-            href="/transaksi"
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold rounded-2xl flex items-center gap-1.5 transition shadow-xs cursor-pointer ml-auto sm:ml-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Buat Sewa</span>
-          </Link>
         </div>
       </div>
 
-      {/* Legend & Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3 sm:p-4 rounded-3xl">
+      {/* ================= LEGEND & FILTER BAR ================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3 sm:p-4 rounded-3xl">
         {/* Status Filter Badges */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <button
             onClick={() => setStatusFilter("Semua")}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
+            className={`px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
               statusFilter === "Semua"
                 ? "bg-slate-900 text-white border-slate-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
                 : "bg-slate-50 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-slate-200 dark:border-zinc-800 hover:bg-slate-100"
@@ -507,50 +629,46 @@ export function KalenderClient({
 
           <button
             onClick={() => setStatusFilter(statusFilter === "Booking" ? "Semua" : "Booking")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
+            className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
               statusFilter === "Booking"
                 ? "bg-blue-600 text-white border-blue-600"
                 : "bg-blue-50/80 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/60 hover:bg-blue-100"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
             <span>Booking</span>
             <span className="text-[10px] opacity-75">({monthStats.bookingCount})</span>
           </button>
 
           <button
             onClick={() => setStatusFilter(statusFilter === "Aktif" ? "Semua" : "Aktif")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
+            className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
               statusFilter === "Aktif"
                 ? "bg-emerald-600 text-white border-emerald-600"
                 : "bg-emerald-50/80 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60 hover:bg-emerald-100"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span>Aktif</span>
             <span className="text-[10px] opacity-75">({monthStats.activeCount})</span>
           </button>
 
           <button
             onClick={() => setStatusFilter(statusFilter === "Terlambat" ? "Semua" : "Terlambat")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
+            className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
               statusFilter === "Terlambat"
                 ? "bg-rose-600 text-white border-rose-600"
                 : "bg-rose-50/80 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 hover:bg-rose-100"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             <span>Terlambat</span>
             <span className="text-[10px] opacity-75">({monthStats.overdueCount})</span>
           </button>
         </div>
 
         {/* Search Input & Legend Hint */}
-        <div className="flex items-center gap-3">
-          <span className="hidden lg:inline text-[11px] text-slate-400 font-medium font-mono">
-            ► mulai • ·· berjalan • ⮌ kembali
-          </span>
-
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative w-full sm:w-56">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -558,7 +676,7 @@ export function KalenderClient({
               placeholder="Cari customer / jas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 dark:focus:border-zinc-600"
+              className="w-full pl-8 pr-7 py-1.5 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-400 dark:focus:border-zinc-600"
             />
             {search && (
               <button
@@ -572,11 +690,11 @@ export function KalenderClient({
         </div>
       </div>
 
-      {/* ================= GANTT CHART VIEW ================= */}
+      {/* ================= GANTT CHART VIEW (RESPONSIVE & ANTI-OVERFLOW) ================= */}
       {mainMode === "gantt" ? (
         <div className="space-y-3">
           {/* Gantt Category Filter Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {["Semua", "Jas", "Celana", "Dasi", "Lainnya"].map((cat) => (
               <button
                 key={cat}
@@ -598,20 +716,20 @@ export function KalenderClient({
           {/* Gantt Timeline Container */}
           <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <div className="min-w-[900px] divide-y divide-slate-100 dark:divide-zinc-800/80">
+              <div className="min-w-[760px] sm:min-w-[900px] divide-y divide-slate-100 dark:divide-zinc-800/80">
                 {/* Timeline Header Row */}
-                <div className="flex bg-slate-50/90 dark:bg-zinc-950/90 sticky top-0 z-20 border-b border-slate-200 dark:border-zinc-800">
-                  {/* Left Column Header (Sticky) */}
-                  <div className="w-56 sm:w-64 shrink-0 px-3.5 py-3 font-bold text-xs text-slate-700 dark:text-zinc-300 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-slate-50 dark:bg-zinc-950 z-30 flex items-center justify-between">
-                    <span>Item Inventori</span>
-                    <span className="text-[10px] text-slate-400">Total Stok</span>
+                <div className="flex bg-slate-50/95 dark:bg-zinc-950/95 sticky top-0 z-30 border-b border-slate-200 dark:border-zinc-800">
+                  {/* Left Column Header (Sticky Left with Shadow Separator) */}
+                  <div className="w-36 sm:w-60 shrink-0 px-3 py-2.5 font-bold text-xs text-slate-700 dark:text-zinc-300 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-slate-50 dark:bg-zinc-950 z-40 flex items-center justify-between shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                    <span className="truncate">Item Inventori</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:inline">Total Stok</span>
                   </div>
 
                   {/* Days of Month Header Columns */}
                   <div
                     className="grid flex-1"
                     style={{
-                      gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(40px, 1fr))`,
+                      gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(36px, 1fr))`,
                     }}
                   >
                     {ganttDaysList.map((d) => (
@@ -621,7 +739,7 @@ export function KalenderClient({
                           d.isWeekend ? "bg-slate-100/50 dark:bg-zinc-900/40" : ""
                         }`}
                       >
-                        <span className="text-[9.5px] font-bold text-slate-400 block uppercase leading-none">
+                        <span className="text-[9px] font-bold text-slate-400 block uppercase leading-none">
                           {d.dayName}
                         </span>
                         <span
@@ -659,34 +777,38 @@ export function KalenderClient({
 
                     return (
                       <div key={inv.id || inv.kode_jas} className="flex hover:bg-slate-50/40 dark:hover:bg-zinc-800/20 transition group">
-                        {/* Sticky Left Item Info */}
-                        <div className="w-56 sm:w-64 shrink-0 px-3.5 py-3 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-white dark:bg-zinc-900 group-hover:bg-slate-50/90 dark:group-hover:bg-zinc-850 z-10">
-                          <p className="font-bold text-xs text-slate-900 dark:text-zinc-100 truncate" title={inv.nama_jas}>
+                        {/* Sticky Left Item Info (z-20 ensures event bars never bleed on top of it) */}
+                        <div className="w-36 sm:w-60 shrink-0 px-2.5 sm:px-3 py-2 sm:py-2.5 border-r border-slate-200 dark:border-zinc-800 sticky left-0 bg-white dark:bg-zinc-900 group-hover:bg-slate-50/95 dark:group-hover:bg-zinc-850 z-20 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)] flex flex-col justify-center">
+                          <p className="font-bold text-[11.5px] sm:text-xs text-slate-900 dark:text-zinc-100 truncate" title={inv.nama_jas}>
                             {inv.nama_jas}
                           </p>
-                          <div className="flex items-center justify-between mt-0.5 text-[10.5px] text-slate-500 dark:text-zinc-400">
-                            <span>
+                          <div className="flex items-center justify-between gap-1 mt-0.5 text-[10px] text-slate-500 dark:text-zinc-400">
+                            <span className="truncate">
                               {inv.warna || "-"} • {inv.ukuran || "-"}
                             </span>
-                            <span className="font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300">
-                              {inv.jumlah_stok ?? inv.stok_tersedia ?? 1} unit
+                            <span className="font-mono font-semibold px-1 py-0.2 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 shrink-0">
+                              {inv.jumlah_stok ?? inv.stok_tersedia ?? 1}u
                             </span>
                           </div>
                         </div>
 
-                        {/* Days Grid & Booking Bars */}
+                        {/* Days Grid & Booking Bars (Using Native CSS Grid Placement - NOT Absolute) */}
                         <div
-                          className="relative flex-1 grid py-2"
+                          className="grid flex-1 items-stretch py-1.5 relative"
                           style={{
-                            gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(40px, 1fr))`,
-                            minHeight: itemBookings.length > 0 ? "52px" : "44px",
+                            gridTemplateColumns: `repeat(${daysInCurrentMonth}, minmax(36px, 1fr))`,
+                            minHeight: "44px",
                           }}
                         >
-                          {/* Background Grid Cells */}
+                          {/* Background Grid Cells (Row 1, Column per Day) */}
                           {ganttDaysList.map((d) => (
                             <Link
                               key={d.dayNum}
                               href="/transaksi"
+                              style={{
+                                gridColumn: `${d.dayNum} / span 1`,
+                                gridRow: 1,
+                              }}
                               className={`border-r border-slate-100 dark:border-zinc-800/60 h-full flex items-center justify-center transition opacity-0 hover:opacity-100 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 text-indigo-600 ${
                                 d.isWeekend ? "bg-slate-50/30 dark:bg-zinc-950/20" : ""
                               }`}
@@ -696,7 +818,7 @@ export function KalenderClient({
                             </Link>
                           ))}
 
-                          {/* Event Bars Overlay */}
+                          {/* Event Bars Overlay (Row 1, Spanning Columns - Pure CSS Grid) */}
                           {itemBookings.map((tx) => {
                             const s = tx.tanggal_sewa?.slice(0, 10) || monthStartStr;
                             const rawE = tx.tanggal_kembali?.slice(0, 10) || s;
@@ -714,13 +836,14 @@ export function KalenderClient({
                                 onClick={() => setSelectedTx(tx)}
                                 style={{
                                   gridColumn: `${startCol} / ${endCol + 1}`,
+                                  gridRow: 1,
                                 }}
-                                className={`absolute inset-y-2 left-1 right-1 z-10 px-2 rounded-xl text-[10.5px] font-bold border flex items-center gap-1.5 shadow-xs transition active:scale-98 cursor-pointer truncate ${style.pill}`}
+                                className={`relative z-10 mx-0.5 my-auto h-7 sm:h-8 rounded-lg text-[10px] sm:text-[10.5px] font-bold border flex items-center gap-1 px-1.5 shadow-2xs transition active:scale-98 cursor-pointer truncate ${style.pill}`}
                                 title={`${tx.nama_customer} (${tx.status}) — ${tx.kode_transaksi}\nPeriode: ${formatDateIndo(tx.tanggal_sewa)} s/d ${formatDateIndo(tx.tanggal_kembali)}`}
                               >
                                 <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-current opacity-70" />
                                 <span className="truncate">{tx.nama_customer}</span>
-                                <span className="opacity-70 font-mono text-[9.5px] hidden sm:inline shrink-0">
+                                <span className="opacity-70 font-mono text-[9px] hidden sm:inline shrink-0">
                                   ({tx.status})
                                 </span>
                               </button>
@@ -740,119 +863,298 @@ export function KalenderClient({
           </div>
         </div>
       ) : viewMode === "bulan" ? (
-        /* ================= BULAN (MONTH GRID VIEW) ================= */
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
-          {/* Day Headers (SEN, SEL, RAB, KAM, JUM, SAB, MIN) */}
-          <div className="grid grid-cols-7 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-950/70">
-            {DAY_NAMES.map((day, idx) => (
-              <div
-                key={day}
-                className={`py-3 text-center text-xs font-bold tracking-wider uppercase ${
-                  idx >= 5 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-zinc-400"
-                }`}
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Days Grid Cells */}
-          <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 dark:divide-zinc-800/80">
-            {monthCalendarGrid.map((cell, cellIdx) => {
-              const events = getTransactionsOnDate(cell.dateStr);
-              const maxDisplay = 3;
-              const displayedEvents = events.slice(0, maxDisplay);
-              const extraCount = events.length - maxDisplay;
-
-              return (
+        /* ================= BULAN (MONTH GRID VIEW WITH MOBILE AGENDA) ================= */
+        <div className="space-y-3.5 sm:space-y-4">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
+            {/* Day Headers (SEN, SEL, RAB, KAM, JUM, SAB, MIN) */}
+            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-950/70">
+              {DAY_NAMES.map((day, idx) => (
                 <div
-                  key={cellIdx}
-                  onClick={() => setSelectedDate(cell.dateStr)}
-                  className={`min-h-[110px] sm:min-h-[130px] p-1.5 sm:p-2 flex flex-col justify-between transition group relative ${
-                    cell.isCurrentMonth
-                      ? "bg-white dark:bg-zinc-900"
-                      : "bg-slate-50/40 dark:bg-zinc-950/40 text-slate-400 dark:text-zinc-600"
-                  } ${
-                    cell.dateStr === selectedDate
-                      ? "ring-2 ring-indigo-500/50 inset-ring-2"
-                      : "hover:bg-slate-50/80 dark:hover:bg-zinc-800/30"
+                  key={day}
+                  className={`py-2 sm:py-3 text-center text-[10.5px] sm:text-xs font-bold tracking-wider uppercase ${
+                    idx >= 5 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-600 dark:text-zinc-400"
                   }`}
                 >
-                  {/* Date Header */}
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`inline-flex items-center justify-center text-xs font-bold rounded-full w-6 h-6 transition ${
-                        cell.isToday
-                          ? "bg-emerald-600 text-white shadow-xs font-black scale-105"
-                          : cell.isCurrentMonth
-                          ? "text-slate-800 dark:text-zinc-200 group-hover:text-indigo-600"
-                          : "text-slate-400 dark:text-zinc-600"
-                      }`}
-                    >
-                      {cell.dayNumber}
-                    </span>
-
-                    {/* Quick + button on hover */}
-                    <Link
-                      href={`/transaksi`}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-500 transition text-[10px]"
-                      title={`Buat transaksi baru untuk ${cell.dateStr}`}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Link>
-                  </div>
-
-                  {/* Events Bars */}
-                  <div className="space-y-1 flex-1 overflow-hidden">
-                    {displayedEvents.map((tx) => {
-                      const style = getStatusStyle(tx.status);
-                      const s = tx.tanggal_sewa?.slice(0, 10);
-                      const rawE = tx.tanggal_kembali?.slice(0, 10);
-                      const e = rawE && rawE >= s ? rawE : s;
-
-                      const isStart = s === cell.dateStr;
-                      const isEnd = e === cell.dateStr;
-
-                      let indicator = "··";
-                      if (isStart) indicator = "►";
-                      else if (isEnd) indicator = "⮌";
-
-                      return (
-                        <button
-                          key={tx.id || tx.kode_transaksi}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTx(tx);
-                          }}
-                          className={`w-full text-left px-1.5 py-0.5 rounded-lg text-[10.5px] font-semibold border flex items-center gap-1 truncate shadow-2xs transition active:scale-95 cursor-pointer ${style.pill}`}
-                          title={`${tx.nama_customer} (${tx.status}) - ${tx.kode_transaksi}`}
-                        >
-                          <span className="font-mono text-[9px] opacity-75 shrink-0">{indicator}</span>
-                          <span className="truncate">{tx.nama_customer}</span>
-                        </button>
-                      );
-                    })}
-
-                    {extraCount > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDayEventsModalDate(cell.dateStr);
-                        }}
-                        className="w-full text-left px-1.5 py-0.5 rounded-md text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/60 hover:underline"
-                      >
-                        +{extraCount} lainnya
-                      </button>
-                    )}
-                  </div>
+                  {day}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Days Grid Cells */}
+            <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 dark:divide-zinc-800/80">
+              {monthCalendarGrid.map((cell, cellIdx) => {
+                const events = getTransactionsOnDate(cell.dateStr);
+                const isSelected = cell.dateStr === selectedDate;
+
+                // Desktop values
+                const maxDisplay = 3;
+                const displayedEvents = events.slice(0, maxDisplay);
+                const extraCount = events.length - maxDisplay;
+
+                return (
+                  <div
+                    key={cellIdx}
+                    onClick={() => setSelectedDate(cell.dateStr)}
+                    className={`transition cursor-pointer group relative ${
+                      cell.isCurrentMonth
+                        ? "bg-white dark:bg-zinc-900"
+                        : "bg-slate-50/40 dark:bg-zinc-950/40 text-slate-400 dark:text-zinc-600"
+                    } ${
+                      isSelected
+                        ? "bg-indigo-50/60 dark:bg-indigo-950/40 ring-2 ring-indigo-500 ring-inset"
+                        : "hover:bg-slate-50/80 dark:hover:bg-zinc-800/30"
+                    }`}
+                  >
+                    {/* ================= MOBILE CELL VIEW (< sm screens) ================= */}
+                    <div className="flex sm:hidden flex-col items-center justify-between p-1 min-h-[56px]">
+                      {/* Day Number */}
+                      <span
+                        className={`inline-flex items-center justify-center text-xs font-bold rounded-full w-6 h-6 transition ${
+                          cell.isToday
+                            ? "bg-emerald-600 text-white font-black shadow-xs"
+                            : isSelected
+                            ? "bg-indigo-600 text-white font-bold"
+                            : cell.isCurrentMonth
+                            ? "text-slate-800 dark:text-zinc-200"
+                            : "text-slate-400 dark:text-zinc-600"
+                        }`}
+                      >
+                        {cell.dayNumber}
+                      </span>
+
+                      {/* Event Dot Indicators on Mobile */}
+                      <div className="flex items-center justify-center gap-0.5 h-3">
+                        {events.length > 0 && (
+                          <div className="flex items-center gap-0.5">
+                            {events.slice(0, 3).map((tx, dotIdx) => (
+                              <span
+                                key={dotIdx}
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  tx.status === "Booking"
+                                    ? "bg-blue-500"
+                                    : tx.status === "Sedang Disewa"
+                                    ? "bg-emerald-500"
+                                    : tx.status === "Terlambat"
+                                    ? "bg-rose-500"
+                                    : "bg-slate-400"
+                                }`}
+                              />
+                            ))}
+                            {events.length > 3 && (
+                              <span className="text-[8px] font-bold text-indigo-600 dark:text-indigo-400">
+                                +{events.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ================= DESKTOP CELL VIEW (>= sm screens) ================= */}
+                    <div className="hidden sm:flex flex-col justify-between p-1.5 sm:p-2 min-h-[110px] sm:min-h-[130px]">
+                      {/* Date Header */}
+                      <div className="flex items-center justify-between mb-1">
+                        <span
+                          className={`inline-flex items-center justify-center text-xs font-bold rounded-full w-6 h-6 transition ${
+                            cell.isToday
+                              ? "bg-emerald-600 text-white shadow-xs font-black scale-105"
+                              : cell.isCurrentMonth
+                              ? "text-slate-800 dark:text-zinc-200 group-hover:text-indigo-600"
+                              : "text-slate-400 dark:text-zinc-600"
+                          }`}
+                        >
+                          {cell.dayNumber}
+                        </span>
+
+                        {/* Quick + button on hover */}
+                        <Link
+                          href="/transaksi"
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-500 transition text-[10px]"
+                          title={`Buat transaksi baru untuk ${cell.dateStr}`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Link>
+                      </div>
+
+                      {/* Events Bars */}
+                      <div className="space-y-1 flex-1 overflow-hidden">
+                        {displayedEvents.map((tx) => {
+                          const style = getStatusStyle(tx.status);
+                          const s = tx.tanggal_sewa?.slice(0, 10);
+                          const rawE = tx.tanggal_kembali?.slice(0, 10);
+                          const e = rawE && rawE >= s ? rawE : s;
+
+                          const isStart = s === cell.dateStr;
+                          const isEnd = e === cell.dateStr;
+
+                          let indicator = "··";
+                          if (isStart) indicator = "►";
+                          else if (isEnd) indicator = "⮌";
+
+                          return (
+                            <button
+                              key={tx.id || tx.kode_transaksi}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTx(tx);
+                              }}
+                              className={`w-full text-left px-1.5 py-0.5 rounded-lg text-[10.5px] font-semibold border flex items-center gap-1 truncate shadow-2xs transition active:scale-95 cursor-pointer ${style.pill}`}
+                              title={`${tx.nama_customer} (${tx.status}) - ${tx.kode_transaksi}`}
+                            >
+                              <span className="font-mono text-[9px] opacity-75 shrink-0">{indicator}</span>
+                              <span className="truncate">{tx.nama_customer}</span>
+                            </button>
+                          );
+                        })}
+
+                        {extraCount > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDayEventsModalDate(cell.dateStr);
+                            }}
+                            className="w-full text-left px-1.5 py-0.5 rounded-md text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/60 hover:underline"
+                          >
+                            +{extraCount} lainnya
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ================= SELECTED DAY AGENDA CARD (MOBILE & QUICK PREVIEW) ================= */}
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-3.5 sm:p-5 shadow-sm space-y-3">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <CalendarIcon className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-zinc-100 text-xs sm:text-sm flex items-center gap-1.5">
+                    <span>Agenda: {formatDateIndo(selectedDate)}</span>
+                    {selectedDate === todayStr && (
+                      <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold">
+                        Hari ini
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                    {selectedDayEvents.length} persewaan tercatat pada tanggal ini
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/transaksi"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-xs font-bold flex items-center gap-1 transition shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Buat Sewa</span>
+              </Link>
+            </div>
+
+            {/* List of Events on Selected Date */}
+            {selectedDayEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5">
+                {selectedDayEvents.map((tx) => {
+                  const style = getStatusStyle(tx.status);
+                  const s = tx.tanggal_sewa?.slice(0, 10);
+                  const rawE = tx.tanggal_kembali?.slice(0, 10);
+                  const e = rawE && rawE >= s ? rawE : s;
+
+                  const isStart = s === selectedDate;
+                  const isEnd = e === selectedDate;
+
+                  return (
+                    <div
+                      key={tx.id || tx.kode_transaksi}
+                      onClick={() => setSelectedTx(tx)}
+                      className="p-3 rounded-2xl bg-slate-50/80 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer space-y-1.5 group"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-xs text-slate-900 dark:text-zinc-100 truncate group-hover:text-indigo-600">
+                          {tx.nama_customer}
+                        </span>
+                        <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${style.badge}`}>
+                          {tx.status}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 dark:text-zinc-400 space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-slate-400">{tx.kode_transaksi}</span>
+                          <span className="font-bold text-[10px] text-indigo-600 dark:text-indigo-400">
+                            {isStart && "► Mulai Sewa"}
+                            {isEnd && "⮌ Wajib Kembali"}
+                            {!isStart && !isEnd && "·· Berjalan"}
+                          </span>
+                        </div>
+
+                        <p className="truncate text-slate-700 dark:text-zinc-300 font-medium">
+                          {tx.items?.map((i) => i.namaJas).join(", ") || "1 Jas"}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-zinc-800/80">
+                          <span className="font-mono font-bold text-xs text-slate-900 dark:text-zinc-100">
+                            {formatRupiah(tx.total_bayar)}
+                          </span>
+                          <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold group-hover:underline flex items-center gap-0.5">
+                            Detail <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-6 sm:py-8 text-center space-y-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-zinc-400">
+                  Tidak ada jadwal sewa atau booking pada tanggal ini.
+                </p>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                  Ketuk tanggal lain pada kalender untuk melihat jadwal, atau buat transaksi sewa baru.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       ) : (
-        /* ================= MINGGU (WEEK VIEW) ================= */
+        /* ================= MINGGU (WEEK VIEW - RESPONSIVE) ================= */
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-sm overflow-hidden">
+          {/* Quick Week Day Switcher on Mobile */}
+          <div className="grid grid-cols-7 md:hidden border-b border-slate-200 dark:border-zinc-800 bg-slate-50/70 dark:bg-zinc-950/70 divide-x divide-slate-200 dark:divide-zinc-800">
+            {weekCalendarDays.map((wDay) => (
+              <button
+                key={wDay.dateStr}
+                onClick={() => setSelectedDate(wDay.dateStr)}
+                className={`py-2 text-center transition cursor-pointer flex flex-col items-center ${
+                  wDay.dateStr === selectedDate
+                    ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 font-black"
+                    : "text-slate-600 dark:text-zinc-400"
+                }`}
+              >
+                <span className="text-[9px] font-bold uppercase block">{wDay.dayName}</span>
+                <span
+                  className={`text-xs mt-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full ${
+                    wDay.isToday
+                      ? "bg-emerald-600 text-white font-black"
+                      : wDay.dateStr === selectedDate
+                      ? "bg-indigo-600 text-white"
+                      : ""
+                  }`}
+                >
+                  {wDay.dayNumber}
+                </span>
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-zinc-800">
             {weekCalendarDays.map((wDay) => {
               const dayEvents = getTransactionsOnDate(wDay.dateStr);
@@ -860,12 +1162,16 @@ export function KalenderClient({
               return (
                 <div
                   key={wDay.dateStr}
-                  className={`min-h-[360px] p-3 flex flex-col ${
-                    wDay.isToday ? "bg-indigo-50/20 dark:bg-indigo-950/10" : ""
+                  className={`min-h-[140px] md:min-h-[360px] p-3 flex flex-col ${
+                    wDay.isToday
+                      ? "bg-indigo-50/20 dark:bg-indigo-950/10"
+                      : wDay.dateStr === selectedDate
+                      ? "bg-slate-50/60 dark:bg-zinc-950/40"
+                      : ""
                   }`}
                 >
                   {/* Day Header */}
-                  <div className="pb-2.5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                  <div className="pb-2 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                         {wDay.dayName}
@@ -887,7 +1193,7 @@ export function KalenderClient({
                   </div>
 
                   {/* Day Event Cards */}
-                  <div className="space-y-2 mt-3 flex-1 overflow-y-auto max-h-[500px]">
+                  <div className="space-y-2 mt-2.5 flex-1 overflow-y-auto max-h-[400px]">
                     {dayEvents.length > 0 ? (
                       dayEvents.map((tx) => {
                         const style = getStatusStyle(tx.status);
@@ -941,7 +1247,7 @@ export function KalenderClient({
                         );
                       })
                     ) : (
-                      <div className="py-8 text-center text-[11px] text-slate-400 dark:text-zinc-600">
+                      <div className="py-4 md:py-8 text-center text-[11px] text-slate-400 dark:text-zinc-600">
                         Tidak ada sewa
                       </div>
                     )}
