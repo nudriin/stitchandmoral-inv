@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { TransaksiClient } from "./TransaksiClient";
 import type { Transaksi, Inventori, Customer } from "@/types/database";
+import { getReceiptConfig } from "@/actions/receiptSettings";
 
-export const revalidate = 15;
+export const dynamic = "force-dynamic";
 
 export default async function TransaksiPage() {
   const supabase = await createClient();
@@ -11,6 +12,7 @@ export default async function TransaksiPage() {
     { data: transaksi = [] },
     { data: inventori = [] },
     { data: customer = [] },
+    receiptConfig,
   ] = await Promise.all([
     supabase
       .from("transaksi")
@@ -18,6 +20,7 @@ export default async function TransaksiPage() {
       .order("created_at", { ascending: false }),
     supabase.from("inventori").select("*").order("nama_jas"),
     supabase.from("customer").select("*").order("nama"),
+    getReceiptConfig(),
   ]);
 
   return (
@@ -25,6 +28,7 @@ export default async function TransaksiPage() {
       initialTransactions={(transaksi as Transaksi[]) || []}
       inventory={(inventori as Inventori[]) || []}
       customers={(customer as Customer[]) || []}
+      initialReceiptConfig={receiptConfig}
     />
   );
 }

@@ -1,12 +1,13 @@
 import jsPDF from "jspdf";
 import { Transaksi } from "@/types/database";
+import { ReceiptConfig } from "@/types/receipt";
 import { generateReceiptCanvas } from "./receiptCanvas";
 
 /**
  * Generates an official A4 PDF document from the receipt canvas
  */
-export function generateReceiptPdf(tx: Transaksi): jsPDF {
-  const canvas = generateReceiptCanvas(tx);
+export function generateReceiptPdf(tx: Transaksi, config?: ReceiptConfig): jsPDF {
+  const canvas = generateReceiptCanvas(tx, config);
   const imgData = canvas.toDataURL("image/jpeg", 0.90);
 
   const doc = new jsPDF({
@@ -18,8 +19,8 @@ export function generateReceiptPdf(tx: Transaksi): jsPDF {
 
   const pageWidth = doc.internal.pageSize.getWidth(); // 210 mm
   const pageHeight = doc.internal.pageSize.getHeight(); // 297 mm
-  const margin = 16;
-  const printWidth = pageWidth - margin * 2; // 178 mm
+  const margin = 14;
+  const printWidth = pageWidth - margin * 2; // 182 mm
   const imgAspectRatio = canvas.height / canvas.width;
   const printHeight = printWidth * imgAspectRatio;
 

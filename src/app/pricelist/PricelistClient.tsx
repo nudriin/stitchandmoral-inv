@@ -332,7 +332,7 @@ export function PricelistClient({ initialConfig }: PricelistClientProps) {
                                 <span className="font-mono text-[10px] text-[#777777] line-through block leading-none">
                                   {formatRupiah(pkg.harga)}
                                 </span>
-                                <span className="font-mono font-bold text-xs text-[#181818] block mt-0.5">
+                                <span className="font-mono font-bold text-xs text-[#FF4D00] block mt-0.5">
                                   {formatRupiah(pkg.harga_diskon)}
                                 </span>
                               </>
@@ -372,7 +372,7 @@ export function PricelistClient({ initialConfig }: PricelistClientProps) {
                                   <span className="font-mono text-[10px] text-[#777777] line-through block leading-none">
                                     {formatRupiah(pkg.harga)}
                                   </span>
-                                  <span className="font-mono font-bold text-xs text-[#181818] block mt-0.5">
+                                  <span className="font-mono font-bold text-xs text-[#FF4D00] block mt-0.5">
                                     {formatRupiah(pkg.harga_diskon)}
                                   </span>
                                 </>
@@ -402,7 +402,7 @@ export function PricelistClient({ initialConfig }: PricelistClientProps) {
                         <div key={promo.id} className="p-3 border border-[#222222] bg-white space-y-1 text-xs">
                           <div className="flex items-center justify-between font-bold">
                             <span className="uppercase">{promo.judul}</span>
-                            <span className="font-mono font-black">
+                            <span className="font-mono font-black text-[#FF4D00]">
                               -{formatRupiah(promo.diskon_nominal)}
                             </span>
                           </div>

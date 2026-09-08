@@ -38,7 +38,7 @@ export function KetersediaanClient({
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSize, setSelectedSize] = useState<string>("all");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all"); // all, ready, booked, full
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("booked"); // default to sedang disewa/booking/habis
 
   // Date Range State
   const [startDate, setStartDate] = useState<string>("");

@@ -103,6 +103,8 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
   const col1Packages = mainPackages.length > 0 ? mainPackages : config.packages.slice(0, Math.ceil(config.packages.length / 2));
   const col2Packages = additionalPackages.length > 0 ? additionalPackages : config.packages.slice(Math.ceil(config.packages.length / 2));
 
+  const accentColor = "#FF4D00";
+
   // --- SECTION 1: PACKAGES ROW ---
   const sec1H = 220;
 
@@ -146,20 +148,20 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
     ctx.textAlign = "right";
     if (pkg.harga_diskon && pkg.harga_diskon < pkg.harga) {
       const rightX = midX - 16;
-      ctx.fillStyle = "#666666";
+      ctx.fillStyle = "#777777";
       ctx.font = "500 9.5px 'Courier New', Courier, monospace";
       const normalPriceStr = formatRupiah(pkg.harga);
       const normalPriceW = ctx.measureText(normalPriceStr).width;
       ctx.fillText(normalPriceStr, rightX, itemY - 2);
 
-      ctx.strokeStyle = "#666666";
+      ctx.strokeStyle = "#777777";
       ctx.lineWidth = 0.9;
       ctx.beginPath();
       ctx.moveTo(rightX - normalPriceW, itemY - 5);
       ctx.lineTo(rightX, itemY - 5);
       ctx.stroke();
 
-      ctx.fillStyle = mainColor;
+      ctx.fillStyle = accentColor;
       ctx.font = "900 11.5px 'Courier New', Courier, monospace";
       ctx.fillText(formatRupiah(pkg.harga_diskon), rightX, itemY + 12);
     } else {
@@ -189,20 +191,20 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
     ctx.textAlign = "right";
     const rightEdge = width - paddingX - 16;
     if (pkg.harga_diskon && pkg.harga_diskon < pkg.harga) {
-      ctx.fillStyle = "#666666";
+      ctx.fillStyle = "#777777";
       ctx.font = "500 9.5px 'Courier New', Courier, monospace";
       const normalPriceStr = formatRupiah(pkg.harga);
       const normalPriceW = ctx.measureText(normalPriceStr).width;
       ctx.fillText(normalPriceStr, rightEdge, itemY - 2);
 
-      ctx.strokeStyle = "#666666";
+      ctx.strokeStyle = "#777777";
       ctx.lineWidth = 0.9;
       ctx.beginPath();
       ctx.moveTo(rightEdge - normalPriceW, itemY - 5);
       ctx.lineTo(rightEdge, itemY - 5);
       ctx.stroke();
 
-      ctx.fillStyle = mainColor;
+      ctx.fillStyle = accentColor;
       ctx.font = "900 11.5px 'Courier New', Courier, monospace";
       ctx.fillText(formatRupiah(pkg.harga_diskon), rightEdge, itemY + 12);
     } else {
@@ -267,7 +269,8 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
     ctx.fillText(dateText, paddingX + 16, pY);
 
     pY += 16;
-    ctx.font = "700 10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillStyle = accentColor;
+    ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(`POTONGAN: ${formatRupiah(promo1.diskon_nominal)}`, paddingX + 16, pY);
 
     pY += 16;
@@ -313,7 +316,8 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
     ctx.fillText(dateText, midX + 16, pY);
 
     pY += 16;
-    ctx.font = "700 10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.fillStyle = accentColor;
+    ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(`POTONGAN: ${formatRupiah(promo2.diskon_nominal)}`, midX + 16, pY);
 
     pY += 16;

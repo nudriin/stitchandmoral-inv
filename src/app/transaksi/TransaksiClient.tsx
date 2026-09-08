@@ -41,6 +41,9 @@ import type { Transaksi, Inventori, Customer, TransactionItem } from "@/types/da
 import { createClient } from "@/lib/supabase/client";
 import { generateReceiptCanvas } from "@/lib/receiptCanvas";
 import { generateReceiptPdf } from "@/lib/receiptPdf";
+import { ReceiptConfig, DEFAULT_RECEIPT_CONFIG } from "@/types/receipt";
+import { getReceiptConfig } from "@/actions/receiptSettings";
+import { ReceiptSettingsModal } from "@/components/ReceiptSettingsModal";
 
 function formatThousand(num: number): string {
   if (!num) return "";
@@ -360,12 +363,14 @@ interface Props {
   initialTransactions: Transaksi[];
   inventory: Inventori[];
   customers: Customer[];
+  initialReceiptConfig?: ReceiptConfig;
 }
 
 export function TransaksiClient({
   initialTransactions,
   inventory,
   customers,
+  initialReceiptConfig,
 }: Props) {
   const { showAlert, showConfirm } = useDialog();
   const [transactions, setTransactions] = useState<Transaksi[]>(initialTransactions);
@@ -378,9 +383,21 @@ export function TransaksiClient({
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receiptSettingsOpen, setReceiptSettingsOpen] = useState(false);
+  const [receiptConfig, setReceiptConfig] = useState<ReceiptConfig>(
+    initialReceiptConfig || DEFAULT_RECEIPT_CONFIG
+  );
   const [sharingWa, setSharingWa] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaksi | null>(null);
+
+  useEffect(() => {
+    if (initialReceiptConfig) {
+      setReceiptConfig(initialReceiptConfig);
+    } else {
+      getReceiptConfig().then(setReceiptConfig);
+    }
+  }, [initialReceiptConfig]);
 
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -1353,7 +1370,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
 
     setSharingPdf(true);
     try {
-      const doc = generateReceiptPdf(tx);
+      const doc = generateReceiptPdf(tx, receiptConfig);
       const blob = doc.output("blob");
       const file = new File([blob], `Struk_${tx.kode_transaksi}.pdf`, { type: "application/pdf" });
 
@@ -1384,7 +1401,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
   function downloadPdfReceipt() {
     if (!selectedTx) return;
     try {
-      const doc = generateReceiptPdf(selectedTx);
+      const doc = generateReceiptPdf(selectedTx, receiptConfig);
       doc.save(`Struk_${selectedTx.kode_transaksi || "Sewa"}.pdf`);
     } catch (err) {
       console.error("Gagal mendownload PDF struk:", err);
@@ -1398,23 +1415,35 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
 
   function printReceipt(tx: Transaksi) {
     const duration = calculateRentalDays(tx.tanggal_sewa, tx.tanggal_kembali);
-    const rows = (tx.items || [])
-      .map((item) => {
+    const items = tx.items || [];
+    const minRows = Math.max(items.length, 4);
+
+    let rowsHtml = "";
+    for (let i = 0; i < minRows; i++) {
+      const item = items[i];
+      if (item) {
         const days = item.durasi_hari || duration;
         const daily = item.harga_per_hari || (days ? Math.round(item.harga / days) : item.harga);
-        return `
+        rowsHtml += `
         <tr>
-          <td>
-            <div style="font-weight:700; color:#0f172a; font-size:12px">${item.namaJas}</div>
-            <div style="color:#64748b; font-size:10.5px">${item.warna || "-"} • Ukuran ${item.ukuran || "-"} (${days} Hari)</div>
+          <td class="col-desc">
+            <div class="item-name">${item.namaJas.toUpperCase()}</div>
+            <div class="item-sub">${item.warna || "-"} • UKURAN ${item.ukuran || "-"} (${days} HARI)</div>
           </td>
-          <td style="text-align:center; font-family:'Roboto', sans-serif; font-size:12px">${item.jumlah}</td>
-          <td style="text-align:right; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(daily)}/hr</td>
-          <td style="text-align:right; font-weight:700; font-family:'Roboto', sans-serif; font-size:12px">${formatRupiah(item.harga * item.jumlah)}</td>
-        </tr>
-      `;
-      })
-      .join("");
+          <td class="col-qty">${String(item.jumlah).padStart(2, "0")}</td>
+          <td class="col-price">${formatRupiah(daily)}</td>
+          <td class="col-total">${formatRupiah(item.harga * item.jumlah)}</td>
+        </tr>`;
+      } else {
+        rowsHtml += `
+        <tr>
+          <td class="col-desc empty-cell">&nbsp;</td>
+          <td class="col-qty empty-cell">&nbsp;</td>
+          <td class="col-price empty-cell">&nbsp;</td>
+          <td class="col-total empty-cell">&nbsp;</td>
+        </tr>`;
+      }
+    }
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -1426,6 +1455,8 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
       return;
     }
 
+    const termsList = receiptConfig.terms && receiptConfig.terms.length > 0 ? receiptConfig.terms : DEFAULT_RECEIPT_CONFIG.terms;
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -1433,11 +1464,11 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
           <title>Invoice & Struk Sewa - ${tx.kode_transaksi}</title>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,700&family=Roboto:wght@400;500;700;900&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm 15mm;
+              margin: 10mm 14mm;
             }
             * {
               box-sizing: border-box;
@@ -1445,245 +1476,323 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
               print-color-adjust: exact;
             }
             body {
-              font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+              font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
               margin: 0;
-              padding: 20px;
-              color: #0f172a;
+              padding: 24px;
+              color: #181818;
               background: #fff;
-              font-size: 12px;
-              line-height: 1.5;
+              font-size: 11.5px;
+              line-height: 1.4;
             }
-            .invoice-box {
-              max-width: 680px;
+            .invoice-wrapper {
+              max-width: 720px;
               margin: 0 auto;
-              border: 1px solid #e2e8f0;
-              border-radius: 8px;
-              padding: 24px 28px;
             }
-            .brand-header {
-              text-align: center;
-              margin-bottom: 12px;
-            }
-            .brand-title {
-              font-size: 20px;
-              font-weight: 900;
-              letter-spacing: 1px;
-              color: #0f172a;
-              margin: 0;
-            }
-            .brand-sub {
-              font-size: 10px;
-              font-weight: 700;
-              letter-spacing: 1.5px;
-              color: #64748b;
-              margin-top: 2px;
-            }
-            .single-divider {
-              border-top: 1px solid #e2e8f0;
-              margin: 12px 0 16px;
-            }
-            .grid-meta {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 16px;
-              font-size: 11.5px;
-              padding-bottom: 12px;
-              border-bottom: 1px solid #f1f5f9;
-            }
-            .meta-label {
-              color: #64748b;
-              font-size: 10px;
-              font-weight: 500;
-            }
-            .meta-value {
-              color: #0f172a;
-              font-weight: 700;
-              font-size: 12.5px;
-              margin-bottom: 4px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 14px 0;
-            }
-            th {
-              color: #64748b;
-              padding: 6px 8px;
-              font-size: 10px;
-              font-weight: 700;
-              letter-spacing: 0.5px;
-              border-top: 1px solid #cbd5e1;
-              border-bottom: 1px solid #e2e8f0;
-              text-align: left;
-            }
-            td {
-              padding: 8px 8px;
-              border-bottom: 1px solid #f8fafc;
-              vertical-align: top;
-            }
-            .financial-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 6px;
-              font-size: 11.5px;
-            }
-            .financial-table td {
-              padding: 3px 8px;
-              border: none;
-            }
-            .total-banner {
-              background: #0f172a;
-              color: #fff;
-              font-weight: bold;
-              border-radius: 6px;
-              padding: 8px 12px;
-              margin: 10px 0;
+            /* Top Bar (Pricelist style) */
+            .top-bar {
               display: flex;
               justify-content: space-between;
-              align-items: center;
-              font-size: 12px;
+              font-size: 9.5px;
+              font-weight: 700;
+              letter-spacing: 2.5px;
+              text-transform: uppercase;
+              color: #181818;
+              padding-bottom: 8px;
+              border-bottom: 0.8px solid #222;
             }
-            .total-banner span:last-child {
-              font-size: 15px;
-              color: #34d399;
+            /* Hero Big Title (Pricelist style) */
+            .hero-header {
+              text-align: center;
+              margin: 14px 0 16px;
+            }
+            .hero-main {
+              font-family: 'Arial Black', Impact, sans-serif;
+              font-weight: 900;
+              font-size: 34px;
+              letter-spacing: 4px;
+              color: #181818;
+            }
+            .hero-sub {
+              font-family: 'Playfair Display', Georgia, serif;
+              font-style: italic;
+              font-weight: 400;
+              font-size: 38px;
+              color: #181818;
+              margin-left: 6px;
+            }
+            .hero-divider {
+              border-top: 0.8px solid #222;
+              margin: 12px 0 16px;
+            }
+            /* Meta & Store Details */
+            .meta-grid {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 16px;
+            }
+            .meta-details {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 10px;
+              font-weight: 700;
+              line-height: 1.6;
+              color: #181818;
+            }
+            .brand-section {
+              text-align: right;
+            }
+            .brand-name {
+              font-family: 'Arial Black', Impact, sans-serif;
+              font-size: 12px;
+              font-weight: 900;
+              letter-spacing: 0.5px;
+              color: #181818;
+              margin: 0;
+            }
+            .brand-address {
+              font-size: 9px;
+              color: #4A4A4A;
+              margin-top: 2px;
+              line-height: 1.4;
+            }
+            /* Customer Section */
+            .customer-section {
+              margin-bottom: 16px;
+            }
+            .customer-label {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 10.5px;
+              font-weight: 700;
+              color: #181818;
+            }
+            .customer-name {
+              font-size: 13.5px;
+              font-weight: 900;
+              color: #181818;
+              margin: 2px 0;
+            }
+            .customer-sub {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 10px;
+              color: #4A4A4A;
+            }
+            /* Table Box Grid */
+            .table-grid {
+              width: 100%;
+              border-collapse: collapse;
+              border: 1.2px solid #222;
+              margin-bottom: 24px;
+            }
+            .table-grid th, .table-grid td {
+              border: 1px solid #222;
+              padding: 6px 10px;
+              vertical-align: middle;
+            }
+            .table-grid th {
+              background: #f8fafc;
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 10.5px;
+              font-weight: 900;
+              letter-spacing: 0.5px;
+            }
+            .col-desc { width: 48%; text-align: left; }
+            .col-qty { width: 12%; text-align: center; font-family: 'Courier Prime', Courier, monospace; font-weight: 700; }
+            .col-price { width: 20%; text-align: right; font-family: 'Courier Prime', Courier, monospace; }
+            .col-total { width: 20%; text-align: right; font-family: 'Courier Prime', Courier, monospace; font-weight: 900; }
+            .item-name { font-weight: 700; font-size: 11px; }
+            .item-sub { font-size: 8.5px; color: #4A4A4A; margin-top: 1px; }
+            .empty-cell { height: 28px; }
+
+            .summary-row td {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 10px;
+              padding: 5px 10px;
+            }
+            .summary-label {
+              text-align: right;
+              font-weight: 700;
+              border-right: 1px solid #222;
+            }
+            .summary-val {
+              text-align: right;
+              font-weight: 700;
+            }
+            .accent-val { color: #FF4D00; }
+            .total-row {
+              background: #0F172A !important;
+              color: #fff !important;
+            }
+            .total-row td {
+              padding: 8px 10px;
+              border-color: #222;
+            }
+            .total-row .summary-label {
+              color: #fff;
+              font-size: 11px;
+              font-weight: 900;
+              letter-spacing: 1px;
+            }
+            .total-row .summary-val {
+              color: #FF4D00;
+              font-size: 13.5px;
               font-weight: 900;
             }
-            .terms-box {
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              padding: 10px 14px;
-              margin-top: 18px;
-              font-size: 10px;
-              color: #475569;
-              line-height: 1.5;
+            /* Footer */
+            .footer-grid {
+              display: grid;
+              grid-template-columns: 1.2fr 0.8fr 0.8fr;
+              gap: 16px;
+              align-items: flex-start;
+              font-size: 8.5px;
+              padding-top: 10px;
             }
             .terms-title {
-              font-weight: 700;
-              color: #0f172a;
-              margin-bottom: 4px;
-              font-size: 10px;
-            }
-            .footer-info {
-              text-align: center;
-              margin-top: 16px;
+              font-family: 'Arial Black', sans-serif;
               font-size: 9.5px;
-              color: #64748b;
+              font-weight: 900;
+              margin-bottom: 6px;
             }
-            @media print {
-              body {
-                padding: 0;
-              }
-              .invoice-box {
-                border: none;
-                padding: 0;
-              }
+            .terms-item {
+              margin-bottom: 3px;
+              color: #4A4A4A;
+              line-height: 1.35;
+            }
+            .contact-box {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 8px;
+              line-height: 1.5;
+            }
+            .sig-section {
+              text-align: center;
+              padding-top: 20px;
+            }
+            .sig-line {
+              border-bottom: 1px solid #222;
+              width: 80%;
+              margin: 0 auto 6px;
+            }
+            .sig-name {
+              font-size: 9px;
+              font-weight: 900;
+              color: #181818;
+            }
+            .sig-title {
+              font-family: 'Courier Prime', Courier, monospace;
+              font-size: 7.5px;
+              color: #4A4A4A;
             }
           </style>
         </head>
         <body>
-          <div class="invoice-box">
-            <div class="brand-header">
-              <h1 class="brand-title">STITCH & MORAL</h1>
-              <div class="brand-sub">SEWA JAS & TUXEDO PALANGKARAYA</div>
+          <div class="invoice-wrapper">
+            <!-- 1. Top Bar (Identical to Pricelist) -->
+            <div class="top-bar">
+              <span>${(receiptConfig.brand_sub || "SEWA JAS & TUXEDO").toUpperCase()}</span>
+              <span>${(receiptConfig.brand_name || "STITCH & MORAL").toUpperCase()}</span>
+              <span>OFFICIAL INVOICE</span>
             </div>
 
-            <div class="single-divider"></div>
+            <!-- 2. Hero Big Title (Identical to Pricelist) -->
+            <div class="hero-header">
+              <span class="hero-main">${(receiptConfig.title || "INVOICE").toUpperCase()}</span>
+              <span class="hero-sub">Receipt</span>
+            </div>
 
-            <div class="grid-meta">
-              <div>
-                <div class="meta-label">No. Transaksi</div>
-                <div class="meta-value">${tx.kode_transaksi}</div>
+            <div class="hero-divider"></div>
 
-                <div class="meta-label">Customer</div>
-                <div class="meta-value">${tx.nama_customer}</div>
-                <div style="color:#64748b; font-size:10.5px">WhatsApp: +${tx.whatsapp || "-"}</div>
+            <!-- 3. Meta & Store Section -->
+            <div class="meta-grid">
+              <div class="meta-details">
+                <div>NOMOR TRANSAKSI : #${tx.kode_transaksi}</div>
+                <div>TANGGAL SEWA    : ${formatDateIndo(tx.tanggal_sewa).toUpperCase()}</div>
+                <div>TGL PENGEMBALIAN: ${formatDateIndo(tx.tanggal_kembali).toUpperCase()}</div>
               </div>
-              <div style="text-align:right">
-                <div class="meta-label">Tgl Mulai Sewa</div>
-                <div class="meta-value" style="font-weight:500">${formatDateIndo(tx.tanggal_sewa)}</div>
 
-                <div class="meta-label">Tgl Wajib Kembali</div>
-                <div class="meta-value" style="color:#0f172a">${formatDateIndo(tx.tanggal_kembali)}</div>
-                <div style="color:#64748b; font-size:10.5px">Durasi: <b>${duration} Hari</b> • Status: <b>${tx.status}</b></div>
+              <div class="brand-section">
+                <div class="brand-name">${(receiptConfig.brand_name || "STITCH & MORAL").toUpperCase()}</div>
+                <div class="brand-address">
+                  <div>${(receiptConfig.store_address || "JL. PANGERAN SAMUDERA INDUK NO. 11").toUpperCase()}</div>
+                  <div>${(receiptConfig.store_city || "PALANGKA RAYA").toUpperCase()}</div>
+                  <div>WA: ${receiptConfig.store_whatsapp || "+62 815-4919-3834"}</div>
+                </div>
               </div>
             </div>
 
-            <table>
+            <!-- 4. Customer Section -->
+            <div class="customer-section">
+              <div class="customer-label">DITAGIHKAN KEPADA:</div>
+              <div class="customer-name">${tx.nama_customer.toUpperCase()}</div>
+              <div class="customer-sub">
+                <div>WHATSAPP : +${tx.whatsapp || "-"}</div>
+                <div>STATUS   : ${tx.status.toUpperCase()} (${duration} HARI SEWA)</div>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <table class="table-grid">
               <thead>
                 <tr>
-                  <th>ITEM / VARIAN</th>
-                  <th style="text-align:center">QTY</th>
-                  <th style="text-align:right">HARGA / HARI</th>
-                  <th style="text-align:right">TOTAL</th>
+                  <th class="col-desc">DESKRIPSI / ITEM</th>
+                  <th class="col-qty">JUMLAH</th>
+                  <th class="col-price">HARGA / HARI</th>
+                  <th class="col-total">SUBTOTAL</th>
                 </tr>
               </thead>
               <tbody>
-                ${rows}
+                ${rowsHtml}
+                <!-- Summary Rows -->
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">SUBTOTAL SEWA</td>
+                  <td class="summary-val">${formatRupiah(tx.subtotal)}</td>
+                </tr>
+                ${tx.potongan > 0 ? `
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">POTONGAN DISKON</td>
+                  <td class="summary-val accent-val">-${formatRupiah(tx.potongan)}</td>
+                </tr>` : ""}
+                ${tx.deposit > 0 ? `
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">DEPOSIT JAMINAN</td>
+                  <td class="summary-val">${formatRupiah(tx.deposit)}</td>
+                </tr>` : ""}
+                ${tx.denda > 0 ? `
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">DENDA KETERLAMBATAN</td>
+                  <td class="summary-val accent-val">+${formatRupiah(tx.denda)}</td>
+                </tr>` : ""}
+                <tr class="summary-row total-row">
+                  <td colspan="3" class="summary-label">TOTAL PEMBAYARAN</td>
+                  <td class="summary-val">${formatRupiah(tx.total_bayar)}</td>
+                </tr>
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">SUDAH DIBAYAR</td>
+                  <td class="summary-val">${formatRupiah(tx.jumlah_dibayar || 0)}</td>
+                </tr>
+                <tr class="summary-row">
+                  <td colspan="3" class="summary-label">STATUS / SISA</td>
+                  <td class="summary-val ${tx.sisa_pembayaran > 0 ? "accent-val" : ""}">${tx.sisa_pembayaran > 0 ? formatRupiah(tx.sisa_pembayaran) : "LUNAS ✓"}</td>
+                </tr>
               </tbody>
             </table>
 
-            <table class="financial-table">
-              <tr>
-                <td style="color:#64748b">Subtotal Sewa</td>
-                <td style="text-align:right" class="font-medium">${formatRupiah(tx.subtotal)}</td>
-              </tr>
-              ${tx.deposit > 0 ? `
-              <tr>
-                <td style="color:#64748b">Deposit Jaminan</td>
-                <td style="text-align:right">${formatRupiah(tx.deposit)}</td>
-              </tr>` : ""}
-              ${tx.potongan > 0 ? `
-              <tr style="color:#059669">
-                <td>Potongan Diskon</td>
-                <td style="text-align:right; font-weight:700">-${formatRupiah(tx.potongan)}</td>
-              </tr>` : ""}
-              ${tx.denda > 0 ? `
-              <tr style="color:#e11d48">
-                <td>Denda Keterlambatan</td>
-                <td style="text-align:right; font-weight:700">+${formatRupiah(tx.denda)}</td>
-              </tr>` : ""}
-            </table>
+            <!-- Footer -->
+            <div class="footer-grid">
+              <div>
+                <div class="terms-title">SYARAT & KETENTUAN</div>
+                ${termsList.map((t, idx) => `<div class="terms-item">${idx + 1}. ${t}</div>`).join("")}
+              </div>
 
-            <div class="total-banner">
-              <span>TOTAL PEMBAYARAN</span>
-              <span>${formatRupiah(tx.total_bayar)}</span>
-            </div>
+              <div class="contact-box">
+                <b>INFORMASI & BANTUAN:</b><br>
+                WHATSAPP:<br>
+                ${receiptConfig.store_whatsapp || "+62 815-4919-3834"}
+              </div>
 
-            <table class="financial-table">
-              <tr>
-                <td style="color:#64748b">Sudah Dibayar</td>
-                <td style="text-align:right; font-weight:700">${formatRupiah(tx.jumlah_dibayar || 0)}</td>
-              </tr>
-              ${tx.sisa_pembayaran > 0 ? `
-              <tr style="color:#e11d48; font-weight:700">
-                <td>Sisa Pembayaran</td>
-                <td style="text-align:right">${formatRupiah(tx.sisa_pembayaran)}</td>
-              </tr>` : `
-              <tr>
-                <td colspan="2" style="text-align:center; background:#ecfdf5; color:#047857; font-weight:700; padding:5px; border-radius:4px; font-size:10.5px">
-                  ✓ STATUS: PEMBAYARAN SUDAH LUNAS
-                </td>
-              </tr>`}
-              ${tx.catatan ? `
-              <tr>
-                <td colspan="2" style="color:#64748b; font-style:italic; padding-top:4px">
-                  Catatan: ${tx.catatan}
-                </td>
-              </tr>` : ""}
-            </table>
-
-            <div class="terms-box">
-              <div class="terms-title">SYARAT & KETENTUAN SEWA:</div>
-              <div>1. Wajib menitipkan kartu identitas asli (KTP/SIM) selama masa sewa.</div>
-              <div>2. Sistem sewa H-1 ambil & H+1 kembali. Keterlambatan dikenakan denda harian.</div>
-              <div>3. Dilarang mencuci / menyetrika jas sendiri (laundry ditangani toko).</div>
-              <div>4. Kerusakan / kehilangan jas & aksesoris dikenakan biaya penggantian.</div>
-              <div>5. Harap cek kondisi jas saat serah terima & simpan struk ini.</div>
-            </div>
-
-            <div class="footer-info">
-              <div>Stitch & Moral &nbsp;•&nbsp; WA: 081549193834 &nbsp;•&nbsp; Jl. Pangeran Samudera Induk No. 11, Palangka Raya</div>
+              <div class="sig-section">
+                <div class="sig-line"></div>
+                <div class="sig-name">${(receiptConfig.manager_name || "ADMIN STITCH & MORAL").toUpperCase()}</div>
+                <div class="sig-title">${(receiptConfig.manager_title || "PENANGGUNG JAWAB").toUpperCase()}</div>
+              </div>
             </div>
           </div>
 
@@ -1704,7 +1813,7 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
   function downloadReceiptImage() {
     if (!selectedTx) return;
     try {
-      const canvas = generateReceiptCanvas(selectedTx);
+      const canvas = generateReceiptCanvas(selectedTx, receiptConfig);
       const imgData = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = imgData;
@@ -1736,14 +1845,15 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="flex bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 shadow-sm">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          {/* View Mode Toggle */}
+          <div className="flex bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 shadow-2xs shrink-0 h-10 items-center">
             <button
               onClick={() => setViewMode("card")}
               className={`p-1.5 rounded-lg transition cursor-pointer ${
                 viewMode === "card"
-                  ? "bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-sm"
-                  : "text-slate-400 dark:text-zinc-400"
+                  ? "bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-2xs"
+                  : "text-slate-400 dark:text-zinc-400 hover:text-slate-600 dark:hover:text-zinc-200"
               }`}
               title="Tampilan Card"
             >
@@ -1753,8 +1863,8 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
               onClick={() => setViewMode("list")}
               className={`p-1.5 rounded-lg transition cursor-pointer ${
                 viewMode === "list"
-                  ? "bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-sm"
-                  : "text-slate-400 dark:text-zinc-400"
+                  ? "bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-2xs"
+                  : "text-slate-400 dark:text-zinc-400 hover:text-slate-600 dark:hover:text-zinc-200"
               }`}
               title="Tampilan List"
             >
@@ -1762,19 +1872,31 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
             </button>
           </div>
 
+          {/* Template Struk */}
+          <button
+            onClick={() => setReceiptSettingsOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 h-10 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs cursor-pointer shrink-0"
+            title="Atur template & teks struk invoice sewa"
+          >
+            <FileText className="w-4 h-4 text-[#FF4D00] shrink-0" />
+            <span>Template Struk</span>
+          </button>
+
+          {/* Kalender */}
           <Link
             href="/kalender"
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs"
+            className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 h-10 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs shrink-0"
           >
-            <Calendar className="w-4 h-4 text-indigo-500" />
+            <Calendar className="w-4 h-4 text-indigo-500 shrink-0" />
             <span>Kalender</span>
           </Link>
 
+          {/* Transaksi Baru (Primary Action) */}
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-sm transition shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-bold text-xs sm:text-sm transition shadow-sm cursor-pointer shrink-0 whitespace-nowrap"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0" />
             <span>Transaksi Baru</span>
           </button>
         </div>
@@ -3495,6 +3617,14 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
           </div>
         </div>
       )}
+
+      {/* Receipt Template Settings Modal */}
+      <ReceiptSettingsModal
+        isOpen={receiptSettingsOpen}
+        onClose={() => setReceiptSettingsOpen(false)}
+        currentConfig={receiptConfig}
+        onConfigSaved={setReceiptConfig}
+      />
     </div>
   );
 }
