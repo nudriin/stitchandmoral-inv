@@ -10,6 +10,7 @@ export interface SuitBookingScheduleItem {
   tanggal_kembali: string;
   status: string;
   bookedQty: number;
+  catatan?: string;
 }
 
 export interface SuitWithSchedule {
@@ -61,6 +62,7 @@ export function getSuitsWithSchedule({
               tanggal_kembali: tx.tanggal_kembali,
               status: tx.status,
               bookedQty: qty,
+              catatan: tx.catatan || "",
             });
 
             // Check if active today

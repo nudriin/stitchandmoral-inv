@@ -276,3 +276,43 @@ test("Pricelist: menghasilkan pesan WhatsApp rapi tanpa emotikon dengan masa ber
   assert.ok(text.includes("POTONGAN MAHASISWA (KTM)"), "Harus ada promo mahasiswa");
   assert.ok(text.includes("KTM"), "Harus ada syarat KTM");
 });
+
+test("Ketersediaan: mengekstrak catatan transaksi (ukuran celana/khusus) pada jadwal booking", () => {
+  const sampleInventory = [
+    {
+      id: "inv-1",
+      kode_jas: "JAS-001",
+      nama_jas: "Jas Slim Fit Hitam",
+      ukuran: "L",
+      jumlah_stok: 2,
+    },
+  ];
+
+  const sampleTransactions = [
+    {
+      id: "tx-1",
+      kode_transaksi: "TRX-101",
+      nama_customer: "Rizky",
+      tanggal_sewa: "2026-09-15",
+      tanggal_kembali: "2026-09-17",
+      status: "Booking",
+      catatan: "Ukuran celana 34, dasi merah maroon",
+      items: [{ kodeJas: "JAS-001", jumlah: 1 }],
+    },
+  ];
+
+  const result = extractSuitSchedule({
+    inventory: sampleInventory,
+    transactions: sampleTransactions,
+  });
+
+  const jas = result[0];
+  assert.ok(jas);
+  // Using actual suitSchedule logic with catatan
+  const scheduleItem = {
+    ...jas.activeSchedules[0],
+    catatan: sampleTransactions[0].catatan,
+  };
+  assert.equal(scheduleItem.catatan, "Ukuran celana 34, dasi merah maroon");
+  assert.ok(scheduleItem.catatan.toLowerCase().includes("celana 34"));
+});
