@@ -16,11 +16,19 @@ import {
   MessageCircle,
   StickyNote,
   Clock,
+  Printer,
+  FileSpreadsheet,
+  FileText,
+  Download,
 } from "lucide-react";
 import type { Inventori, Transaksi } from "@/types/database";
 import { getSuitsWithSchedule, SuitWithSchedule } from "@/lib/suitSchedule";
 import { formatDateIndo, formatRupiah } from "@/lib/utils";
 import { useDialog } from "@/components/ModalDialogProvider";
+import {
+  downloadStockSummaryPdf,
+  downloadScheduleNotesPdf,
+} from "@/lib/stockSchedulePdf";
 
 interface KetersediaanClientProps {
   initialTransactions: Transaksi[];
@@ -206,10 +214,79 @@ export function KetersediaanClient({
     });
   };
 
+  // Print Modal State
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printFormat, setPrintFormat] = useState<"summary" | "notes">("summary");
+  const [printStatusScope, setPrintStatusScope] = useState<"all" | "booking" | "disewa">("all");
+  const [printIncludeReady, setPrintIncludeReady] = useState(true);
+
+  // Open Print Modal for specific format
+  const openPrintModal = (format: "summary" | "notes") => {
+    setPrintFormat(format);
+    setIsPrintModalOpen(true);
+  };
+
+  // Execute Print PDF with chosen configuration
+  const handleExecutePrint = () => {
+    try {
+      const options = {
+        startDate: startDate || undefined,
+        returnDate: returnDate || undefined,
+        statusFilter: printStatusScope,
+        includeReadyItems: printIncludeReady,
+      };
+
+      if (printFormat === "summary") {
+        downloadStockSummaryPdf(filteredSuits, options);
+        showAlert({
+          title: "PDF Papan Kontrol Stok Berhasil Diunduh! 📄",
+          message: `Dokumen PDF siap dicetak (${printStatusScope === "booking" ? "Hanya Booking" : printStatusScope === "disewa" ? "Hanya Sedang Disewa" : "Semua Jadwal"}).`,
+          type: "success",
+        });
+      } else {
+        downloadScheduleNotesPdf(filteredSuits, options);
+        showAlert({
+          title: "PDF Jadwal & Catatan Berhasil Diunduh! 📋",
+          message: `Dokumen PDF rincian ukuran celana siap dicetak (${printStatusScope === "booking" ? "Hanya Booking" : printStatusScope === "disewa" ? "Hanya Sedang Disewa" : "Semua Jadwal"}).`,
+          type: "success",
+        });
+      }
+      setIsPrintModalOpen(false);
+    } catch (err: any) {
+      showAlert({
+        title: "Gagal Mengunduh PDF",
+        message: err?.message || "Terjadi kesalahan saat membuat dokumen PDF.",
+        type: "danger",
+      });
+    }
+  };
+
+  // Count items matching current print filter
+  const printPreviewStats = useMemo(() => {
+    let matchSuitsCount = 0;
+    let matchSchedulesCount = 0;
+
+    filteredSuits.forEach((s) => {
+      let schedules = s.activeSchedules;
+      if (printStatusScope === "booking") {
+        schedules = s.activeSchedules.filter((x) => x.status === "Booking");
+      } else if (printStatusScope === "disewa") {
+        schedules = s.activeSchedules.filter((x) => x.status === "Sedang Disewa" || x.status === "Terlambat");
+      }
+
+      if (printIncludeReady || schedules.length > 0) {
+        matchSuitsCount++;
+        matchSchedulesCount += schedules.length;
+      }
+    });
+
+    return { matchSuitsCount, matchSchedulesCount };
+  }, [filteredSuits, printStatusScope, printIncludeReady]);
+
   return (
     <div className="space-y-6 pb-24 md:pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
@@ -226,23 +303,229 @@ export function KetersediaanClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons: PDF Exports with Filter, Pricelist, Buat Transaksi */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export PDF Ringkasan Stok */}
+          <button
+            onClick={() => openPrintModal("summary")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition shadow-2xs cursor-pointer"
+            title="Buka Pilihan Filter & Cetak PDF Papan Kontrol Stok (A4 Landscape)"
+          >
+            <Printer className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="hidden sm:inline">Cetak</span>
+            <span>PDF Stok</span>
+          </button>
+
+          {/* Export PDF Jadwal & Catatan Ukuran */}
+          <button
+            onClick={() => openPrintModal("notes")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-200 text-xs font-semibold transition shadow-2xs cursor-pointer"
+            title="Buka Pilihan Filter & Cetak PDF Jadwal & Catatan Ukuran Celana (A4 Portrait)"
+          >
+            <StickyNote className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Cetak</span>
+            <span>PDF Jadwal & Catatan</span>
+          </button>
+
           <Link
             href="/pricelist"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold transition shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-semibold transition shadow-2xs"
           >
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Pricelist & Promo</span>
+            <span>Pricelist</span>
           </Link>
           <Link
             href="/transaksi"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold transition shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold transition shadow-2xs"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Buat Transaksi</span>
+            <span>Transaksi</span>
           </Link>
         </div>
       </div>
+
+      {/* PRINT OPTIONS MODAL WITH FILTER SELECTION */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-5 py-4 bg-slate-900 dark:bg-zinc-950 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/10 text-amber-400">
+                  <Printer className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">Pilihan Cetak PDF Papan Kontrol</h3>
+                  <p className="text-[11px] text-slate-300">
+                    Pilih filter jadwal & status yang ingin dicetak ke PDF
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPrintModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 text-xs">
+              {/* 1. Format Dokumen */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-900 dark:text-zinc-100">
+                  1. Pilih Format Tampilan Dokumen
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrintFormat("summary")}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      printFormat === "summary"
+                        ? "border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/40 text-slate-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    <span className="text-xs">📑 Papan Kontrol Stok</span>
+                    <span className="text-[10px] opacity-75 font-normal">A4 Landscape (Dinding)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPrintFormat("notes")}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                      printFormat === "notes"
+                        ? "border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-bold ring-2 ring-indigo-500/20"
+                        : "border-slate-200 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/40 text-slate-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    <span className="text-xs">📝 Jadwal & Catatan</span>
+                    <span className="text-[10px] opacity-75 font-normal">A4 Portrait (Workshop)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Filter Status Jadwal (Booking / Sedang Disewa / Semua) */}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-900 dark:text-zinc-100">
+                  2. Pilih Status Transaksi yang Dicetak
+                </label>
+                <div className="space-y-1.5">
+                  <label
+                    onClick={() => setPrintStatusScope("all")}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition ${
+                      printStatusScope === "all"
+                        ? "border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-200 font-bold"
+                        : "border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="printScope"
+                        checked={printStatusScope === "all"}
+                        onChange={() => setPrintStatusScope("all")}
+                        className="text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span>🟡 Semua (Sedang Disewa & Booking)</span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-500">
+                      Lengkap
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setPrintStatusScope("disewa")}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition ${
+                      printStatusScope === "disewa"
+                        ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 text-blue-950 dark:text-blue-200 font-bold"
+                        : "border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="printScope"
+                        checked={printStatusScope === "disewa"}
+                        onChange={() => setPrintStatusScope("disewa")}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>🔵 Sedang Disewa Saja</span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                      Barang Keluar
+                    </span>
+                  </label>
+
+                  <label
+                    onClick={() => setPrintStatusScope("booking")}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition ${
+                      printStatusScope === "booking"
+                        ? "border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 font-bold"
+                        : "border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="printScope"
+                        checked={printStatusScope === "booking"}
+                        onChange={() => setPrintStatusScope("booking")}
+                        className="text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>🟠 Booking Saja</span>
+                    </div>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                      Mendatang
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 3. Opsi Tambahan: Sertakan Barang Ready */}
+              <div className="pt-1">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={printIncludeReady}
+                    onChange={(e) => setPrintIncludeReady(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Sertakan juga model jas yang statusnya Ready (Belum ada booking)</span>
+                </label>
+              </div>
+
+              {/* Preview Stats Info */}
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-[11px] flex items-center justify-between">
+                <span>Total Data Siap Dicetak:</span>
+                <span className="font-bold">
+                  {printPreviewStats.matchSuitsCount} Model Jas ({printPreviewStats.matchSchedulesCount} Transaksi)
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-zinc-800/40 border-t border-slate-200 dark:border-zinc-700 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="px-3.5 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer"
+              >
+                Batal
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecutePrint}
+                className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh PDF Sekarang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Date Range Selector Banner */}
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-white to-amber-50/40 dark:from-indigo-950/20 dark:via-zinc-900 dark:to-amber-950/10 border border-indigo-100 dark:border-indigo-900/40 shadow-xs">
