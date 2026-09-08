@@ -12,6 +12,8 @@ import {
   Wallet,
   LogOut,
   Sparkles,
+  CalendarCheck,
+  Tags,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { ThemeToggle } from "./ThemeToggle";
@@ -20,6 +22,8 @@ import { Palette } from "lucide-react";
 
 const navItems = [
   { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/ketersediaan", label: "Cek Stok", icon: CalendarCheck },
+  { href: "/pricelist", label: "Pricelist", icon: Tags },
   { href: "/transaksi", label: "Transaksi", icon: ReceiptText },
   { href: "/kalender", label: "Kalender", icon: Calendar },
   { href: "/inventori", label: "Inventori", icon: Layers },
@@ -154,7 +158,7 @@ export function BottomNav() {
   if (pathname === "/login") return null;
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/90 border-t border-slate-200 dark:border-zinc-800 backdrop-blur-2xl px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl flex items-center justify-around transition-colors">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/90 border-t border-slate-200 dark:border-zinc-800 backdrop-blur-2xl px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl flex items-center overflow-x-auto no-scrollbar transition-colors">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive =
@@ -167,7 +171,7 @@ export function BottomNav() {
             key={item.href}
             href={item.href}
             prefetch={true}
-            className={`flex flex-col items-center justify-center flex-1 py-1.5 px-1 rounded-xl text-[10px] font-medium transition active:scale-95 ${
+            className={`flex flex-col items-center justify-center min-w-[58px] flex-1 py-1 px-1 rounded-xl text-[10px] font-medium transition active:scale-95 shrink-0 ${
               isActive
                 ? "text-slate-950 dark:text-zinc-50 font-bold"
                 : "text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
@@ -182,7 +186,7 @@ export function BottomNav() {
             >
               <Icon className="w-4 h-4" />
             </div>
-            <span className="truncate max-w-[54px] mt-0.5 leading-tight">{item.label}</span>
+            <span className="truncate max-w-[56px] mt-0.5 leading-tight">{item.label}</span>
           </Link>
         );
       })}

@@ -7,23 +7,33 @@ import { generateReceiptCanvas } from "./receiptCanvas";
  */
 export function generateReceiptPdf(tx: Transaksi): jsPDF {
   const canvas = generateReceiptCanvas(tx);
-  const imgData = canvas.toDataURL("image/png");
+  const imgData = canvas.toDataURL("image/jpeg", 0.90);
 
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",
+    compress: true,
   });
 
   const pageWidth = doc.internal.pageSize.getWidth(); // 210 mm
   const pageHeight = doc.internal.pageSize.getHeight(); // 297 mm
-  const margin = 18;
-  const printWidth = pageWidth - margin * 2; // 174 mm
+  const margin = 16;
+  const printWidth = pageWidth - margin * 2; // 178 mm
   const imgAspectRatio = canvas.height / canvas.width;
   const printHeight = printWidth * imgAspectRatio;
 
   // Center horizontally, top margin
-  doc.addImage(imgData, "PNG", margin, margin, printWidth, Math.min(printHeight, pageHeight - margin * 2));
+  doc.addImage(
+    imgData,
+    "JPEG",
+    margin,
+    margin,
+    printWidth,
+    Math.min(printHeight, pageHeight - margin * 2),
+    undefined,
+    "FAST"
+  );
 
   return doc;
 }

@@ -12,6 +12,8 @@ import {
   ArrowUpRight,
   Sparkles,
   Calendar,
+  CalendarCheck,
+  Tags,
 } from "lucide-react";
 import type { Inventori, Transaksi, Customer, Pengeluaran } from "@/types/database";
 import { NotificationManager } from "@/components/NotificationManager";
@@ -100,20 +102,34 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            href="/ketersediaan"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs"
+          >
+            <CalendarCheck className="w-4 h-4 text-indigo-500" />
+            <span>Cek Stok</span>
+          </Link>
+          <Link
+            href="/pricelist"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs"
+          >
+            <Tags className="w-4 h-4 text-amber-500" />
+            <span>Pricelist</span>
+          </Link>
           <Link
             href="/kalender"
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-sm transition shadow-2xs"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800 font-semibold text-xs sm:text-sm transition shadow-2xs"
           >
-            <Calendar className="w-4 h-4 text-indigo-500" />
-            <span>Kalender Sewa</span>
+            <Calendar className="w-4 h-4 text-emerald-500" />
+            <span>Kalender</span>
           </Link>
           <Link
             href="/transaksi"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-sm transition shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-xs sm:text-sm transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Transaksi Baru</span>
+            <span>Transaksi</span>
           </Link>
         </div>
       </div>

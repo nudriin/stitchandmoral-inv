@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "backup": "node scripts/backup_db.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
