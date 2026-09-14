@@ -83,6 +83,9 @@ function CurrencyInput({
     onChange(num);
   }
 
+  const defaultStyle =
+    "w-full min-w-0 box-border bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 outline-none font-mono text-xs shadow-2xs focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all";
+
   return (
     <div className="relative flex items-center w-full min-w-0">
       {prefix && (
@@ -96,7 +99,7 @@ function CurrencyInput({
         value={displayValue}
         placeholder={placeholder}
         onChange={handleChange}
-        className={`w-full min-w-0 box-border ${prefix ? "pl-9 pr-3" : "px-3"} ${className}`}
+        className={`${defaultStyle} ${prefix ? "pl-9 pr-3" : "px-3"} ${className}`}
       />
     </div>
   );
@@ -3448,13 +3451,14 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-slate-500 mb-0.5">Harga / Hari (Rp)</label>
+                            <label className="block text-[10px] font-semibold text-slate-600 dark:text-zinc-400 mb-0.5">Harga / Hari (Rp)</label>
                             <CurrencyInput
                               value={itemDaily}
                               onChange={(val) => updateEditItemDailyPrice(idx, val)}
+                              className="py-1.5 px-2.5 text-xs font-mono"
                             />
                           </div>
-                          <div className="bg-slate-100 dark:bg-zinc-800/80 rounded-xl px-2.5 py-1 flex flex-col justify-center text-right">
+                          <div className="bg-slate-100 dark:bg-zinc-800/80 rounded-xl px-2.5 py-1 flex flex-col justify-center text-right border border-slate-200/60 dark:border-zinc-700/50">
                             <span className="text-[9px] text-slate-400 block font-medium truncate">Total ({editRentalDays} Hari)</span>
                             <span className="font-mono font-bold text-slate-900 dark:text-zinc-100 text-xs truncate">
                               {formatRupiah(itemTotal)}
@@ -3468,40 +3472,71 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
               </div>
 
               {/* Financial Inputs */}
-              <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 space-y-3">
+              <div className="p-4 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-3.5">
                 <span className="text-[11px] font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-wider block">
                   Penyesuaian Finansial & Pembayaran
                 </span>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div>
-                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Potongan / Diskon (Rp)</label>
-                    <CurrencyInput value={editPotongan} onChange={setEditPotongan} />
+                  <div className="min-w-0">
+                    <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Potongan / Diskon (Rp)
+                    </label>
+                    <CurrencyInput
+                      value={editPotongan}
+                      onChange={setEditPotongan}
+                      placeholder="0"
+                      className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 font-mono text-xs shadow-xs focus:border-slate-400"
+                    />
                   </div>
-                  <div>
-                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Deposit Jaminan (Rp)</label>
-                    <CurrencyInput value={editDeposit} onChange={setEditDeposit} />
+                  <div className="min-w-0">
+                    <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Deposit Jaminan (Rp)
+                    </label>
+                    <CurrencyInput
+                      value={editDeposit}
+                      onChange={setEditDeposit}
+                      placeholder="0"
+                      className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 font-mono text-xs shadow-xs focus:border-slate-400"
+                    />
                   </div>
-                  <div>
-                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Denda (Rp)</label>
-                    <CurrencyInput value={editDenda} onChange={setEditDenda} />
+                  <div className="min-w-0">
+                    <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Denda (Rp)
+                    </label>
+                    <CurrencyInput
+                      value={editDenda}
+                      onChange={setEditDenda}
+                      placeholder="0"
+                      className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 font-mono text-xs shadow-xs focus:border-slate-400"
+                    />
                   </div>
-                  <div>
-                    <label className="block text-[10.5px] text-slate-500 mb-0.5">Jumlah Dibayar (Rp)</label>
-                    <CurrencyInput value={editJumlahDibayar} onChange={setEditJumlahDibayar} />
+                  <div className="min-w-0">
+                    <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                      Jumlah Dibayar (Rp)
+                    </label>
+                    <CurrencyInput
+                      value={editJumlahDibayar}
+                      onChange={setEditJumlahDibayar}
+                      placeholder="0"
+                      className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 text-slate-900 dark:text-zinc-100 font-mono font-bold text-xs shadow-xs focus:border-slate-400"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10.5px] text-slate-500 mb-0.5">Catatan</label>
+                  <label className="block text-[10.5px] font-semibold text-slate-600 dark:text-zinc-400 mb-1">
+                    Catatan
+                  </label>
                   <input
                     type="text"
                     value={editCatatan}
                     onChange={(e) => setEditCatatan(e.target.value)}
                     placeholder="Catatan khusus, fitting, penyesuaian..."
-                    className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-slate-900 dark:text-zinc-100 outline-none"
+                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-zinc-100 outline-none shadow-xs focus:border-slate-400 focus:ring-1 focus:ring-slate-400"
                   />
                 </div>
+              </div>
 
                 {/* Summary calculation box */}
                 <div className="p-3 bg-slate-50 dark:bg-zinc-950 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-1">
@@ -3527,7 +3562,6 @@ Dokumen PDF resmi terlampir. Terima kasih! 🙏`;
                     </div>
                   )}
                 </div>
-              </div>
 
               {/* Form Footer */}
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-zinc-800">
