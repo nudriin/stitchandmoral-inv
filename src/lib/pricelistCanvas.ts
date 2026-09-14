@@ -225,7 +225,15 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
 
   // --- SECTION 2: PROMO & SPECIAL OFFERS WITH VALIDITY DATES ---
   const activePromos = (config.promos || []).filter((p) => p.aktif);
-  const sec2H = 260;
+  const promoRows = Math.ceil(activePromos.length / 2);
+  const cardH = 80;
+  const cardRowGap = 10;
+  const cardColGap = 12;
+  const cardW = (contentWidth - 32 - cardColGap) / 2; // (720 - 32 - 12) / 2 = 338
+  const sec2H =
+    activePromos.length === 0
+      ? 55
+      : 44 + promoRows * cardH + (promoRows - 1) * cardRowGap + 14;
 
   // Section 2 Header (Span Full Width)
   ctx.textAlign = "left";
@@ -242,105 +250,88 @@ export function generatePricelistCanvas(config: PricelistConfig): HTMLCanvasElem
   ctx.lineTo(width - paddingX, y + 36);
   ctx.stroke();
 
-  // Vertical Divider for Promos
-  ctx.beginPath();
-  ctx.moveTo(midX, y + 36);
-  ctx.lineTo(midX, y + sec2H);
-  ctx.stroke();
+  // Render all active promos in a 2-column grid format (Boxed Cards matching Preview)
+  activePromos.forEach((promo, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const cardX = paddingX + 16 + col * (cardW + cardColGap);
+    const cardY = y + 46 + row * (cardH + cardRowGap);
+    const padInnerX = 10;
 
-  // Render Left Promo (e.g. Promo 1)
-  const promo1 = activePromos[0];
-  if (promo1) {
-    let pY = y + 58;
+    // Card background & border box
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(cardX, cardY, cardW, cardH);
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 0.9;
+    ctx.strokeRect(cardX, cardY, cardW, cardH);
+
+    // Discount Nominal on Right (e.g. -Rp 25.000)
+    const discStr = `-${formatRupiah(promo.diskon_nominal)}`;
+    ctx.textAlign = "right";
+    ctx.fillStyle = accentColor;
+    ctx.font = "900 11px 'Courier New', Courier, monospace";
+    ctx.letterSpacing = "0px";
+    const discW = ctx.measureText(discStr).width;
+    ctx.fillText(discStr, cardX + cardW - padInnerX, cardY + 15);
+
+    // Title on Left (Wrapped if too long)
     ctx.textAlign = "left";
     ctx.fillStyle = mainColor;
-    ctx.font = "900 11.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(promo1.judul.toUpperCase(), paddingX + 16, pY);
+    ctx.font = "900 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.letterSpacing = "0.2px";
+    const maxTitleW = cardW - padInnerX * 2 - discW - 6;
 
-    pY += 16;
-    // Validity Period Box
-    ctx.fillStyle = mainColor;
-    ctx.font = "700 9.5px 'Courier New', Courier, monospace";
-    const dateText = promo1.periode_label
-      ? `PERIODE: ${promo1.periode_label.toUpperCase()}`
-      : promo1.tanggal_mulai && promo1.tanggal_berakhir
-        ? `PERIODE: ${formatDateIndo(promo1.tanggal_mulai).toUpperCase()} - ${formatDateIndo(promo1.tanggal_berakhir).toUpperCase()}`
-        : "PERIODE: BERLAKU SETIAP HARI";
-    ctx.fillText(dateText, paddingX + 16, pY);
-
-    pY += 16;
-    ctx.fillStyle = accentColor;
-    ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(`POTONGAN: ${formatRupiah(promo1.diskon_nominal)}`, paddingX + 16, pY);
-
-    pY += 16;
-    ctx.fillStyle = subColor;
-    ctx.font = "400 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-
-    // Text wrapping for promo requirement
-    const maxW = colWidth - 32;
-    const words = promo1.syarat.split(" ");
-    let line = "";
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxW && n > 0) {
-        ctx.fillText(line, paddingX + 16, pY);
-        line = words[n] + " ";
-        pY += 13;
+    const titleWords = promo.judul.toUpperCase().split(" ");
+    let tLine = "";
+    let titleY = cardY + 15;
+    for (let n = 0; n < titleWords.length; n++) {
+      const testLine = tLine ? `${tLine} ${titleWords[n]}` : titleWords[n];
+      if (ctx.measureText(testLine).width > maxTitleW && n > 0) {
+        ctx.fillText(tLine, cardX + padInnerX, titleY);
+        tLine = titleWords[n];
+        titleY += 12;
       } else {
-        line = testLine;
+        tLine = testLine;
       }
     }
-    ctx.fillText(line, paddingX + 16, pY);
-  }
+    if (tLine) {
+      ctx.fillText(tLine, cardX + padInnerX, titleY);
+    }
 
-  // Render Right Promo (e.g. Promo 2)
-  const promo2 = activePromos[1];
-  if (promo2) {
-    let pY = y + 58;
-    ctx.textAlign = "left";
+    // Validity Period
+    let curY = titleY + 13;
     ctx.fillStyle = mainColor;
-    ctx.font = "900 11.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(promo2.judul.toUpperCase(), midX + 16, pY);
-
-    pY += 16;
-    // Validity Period Box
-    ctx.fillStyle = mainColor;
-    ctx.font = "700 9.5px 'Courier New', Courier, monospace";
-    const dateText = promo2.periode_label
-      ? `PERIODE: ${promo2.periode_label.toUpperCase()}`
-      : promo2.tanggal_mulai && promo2.tanggal_berakhir
-        ? `PERIODE: ${formatDateIndo(promo2.tanggal_mulai).toUpperCase()} - ${formatDateIndo(promo2.tanggal_berakhir).toUpperCase()}`
+    ctx.font = "700 8.5px 'Courier New', Courier, monospace";
+    ctx.letterSpacing = "0.3px";
+    const dateText = promo.periode_label
+      ? `PERIODE: ${promo.periode_label.toUpperCase()}`
+      : promo.tanggal_mulai && promo.tanggal_berakhir
+        ? `PERIODE: ${formatDateIndo(promo.tanggal_mulai).toUpperCase()} - ${formatDateIndo(promo.tanggal_berakhir).toUpperCase()}`
         : "PERIODE: BERLAKU SETIAP HARI";
-    ctx.fillText(dateText, midX + 16, pY);
+    ctx.fillText(dateText, cardX + padInnerX, curY);
 
-    pY += 16;
-    ctx.fillStyle = accentColor;
-    ctx.font = "900 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(`POTONGAN: ${formatRupiah(promo2.diskon_nominal)}`, midX + 16, pY);
-
-    pY += 16;
+    // Requirements / Terms Text (Wrapped)
+    curY += 12;
     ctx.fillStyle = subColor;
-    ctx.font = "400 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-
-    // Text wrapping for promo requirement
-    const maxW = colWidth - 32;
-    const words = promo2.syarat.split(" ");
-    let line = "";
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxW && n > 0) {
-        ctx.fillText(line, midX + 16, pY);
-        line = words[n] + " ";
-        pY += 13;
+    ctx.font = "400 8.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    ctx.letterSpacing = "0px";
+    const maxDescW = cardW - padInnerX * 2;
+    const descWords = (promo.syarat || "").split(" ");
+    let dLine = "";
+    for (let n = 0; n < descWords.length; n++) {
+      const testLine = dLine ? `${dLine} ${descWords[n]}` : descWords[n];
+      if (ctx.measureText(testLine).width > maxDescW && n > 0) {
+        ctx.fillText(dLine, cardX + padInnerX, curY);
+        dLine = descWords[n];
+        curY += 11;
       } else {
-        line = testLine;
+        dLine = testLine;
       }
     }
-    ctx.fillText(line, midX + 16, pY);
-  }
+    if (dLine) {
+      ctx.fillText(dLine, cardX + padInnerX, curY);
+    }
+  });
 
   // Horizontal Divider after Section 2
   y += sec2H;
