@@ -1,5 +1,5 @@
 import type { Inventori, Transaksi } from "@/types/database";
-import { isDateRangeOverlapping } from "./bookingValidation";
+import { isDateRangeOverlapping, isTransactionItemMatch } from "./bookingValidation";
 import type { ConflictingBooking } from "./bookingValidation";
 
 export interface SuitBookingScheduleItem {
@@ -52,7 +52,7 @@ export function getSuitsWithSchedule({
       // Check if this transaction contains this suit
       if (Array.isArray(tx.items)) {
         for (const itm of tx.items) {
-          if (itm.kodeJas === inv.kode_jas) {
+          if (isTransactionItemMatch(itm, inv)) {
             const qty = Number(itm.jumlah) || 1;
             schedules.push({
               kode_transaksi: tx.kode_transaksi,

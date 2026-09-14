@@ -25,6 +25,7 @@ import {
   Grid,
 } from "lucide-react";
 import { formatRupiah, formatDateIndo, calculateRentalDays } from "@/lib/utils";
+import { isTransactionItemMatch } from "@/lib/bookingValidation";
 import type { Transaksi, Inventori, Customer } from "@/types/database";
 
 interface KalenderClientProps {
@@ -764,7 +765,7 @@ export function KalenderClient({
 
                     // Find bookings for this specific inventory item that overlap with current month
                     const itemBookings = activeTransactions.filter((tx) => {
-                      const hasItem = Array.isArray(tx.items) && tx.items.some((i) => i.kodeJas === inv.kode_jas);
+                      const hasItem = Array.isArray(tx.items) && tx.items.some((i) => isTransactionItemMatch(i, inv));
                       if (!hasItem) return false;
 
                       const s = tx.tanggal_sewa?.slice(0, 10);

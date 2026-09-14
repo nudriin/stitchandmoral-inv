@@ -5,6 +5,7 @@ import {
   calculateBookedQuantity,
   getItemBookingAvailability,
   checkBookingConflicts,
+  isTransactionItemMatch,
 } from "../src/lib/bookingValidation.ts";
 
 test("isDateRangeOverlapping: deteksi tumpang tindih tanggal secara presisi", () => {
@@ -232,4 +233,44 @@ test("checkBookingConflicts: mengabaikan transaksi Selesai dan Dibatalkan", () =
   });
 
   assert.equal(conflicts.length, 0, "Transaksi Selesai & Dibatalkan tidak boleh memblokir sewa baru");
+});
+
+test("isTransactionItemMatch: pencocokan kode eksak dan fallback berdasarkan nama/ukuran/warna", () => {
+  const invItem = {
+    id: "inv-kingsman",
+    kode_jas: "JAS-1789297543399", // kode baru setelah edit stok
+    nama_jas: "Celana Kingsman Black",
+    ukuran: "32-34",
+    warna: "Hitam",
+  };
+
+  // 1. Transaksi dengan kode eksak
+  assert.equal(
+    isTransactionItemMatch(
+      { kodeJas: "JAS-1789297543399", namaJas: "Celana Kingsman Black", ukuran: "32-34", warna: "Hitam" },
+      invItem
+    ),
+    true,
+    "Kode eksak harus cocok"
+  );
+
+  // 2. Transaksi lama dengan kode lama berbeda tetapi nama & ukuran & warna sama
+  assert.equal(
+    isTransactionItemMatch(
+      { kodeJas: "JAS-1788264273702", namaJas: "Celana Kingsman Black", ukuran: "32-34", warna: "Hitam" },
+      invItem
+    ),
+    true,
+    "Kode lama harus tetap cocok via fallback nama + ukuran + warna"
+  );
+
+  // 3. Item yang benar-benar berbeda
+  assert.equal(
+    isTransactionItemMatch(
+      { kodeJas: "JAS-99999", namaJas: "Jas Silver Slimfit", ukuran: "L", warna: "Silver" },
+      invItem
+    ),
+    false,
+    "Item berbeda tidak boleh cocok"
+  );
 });

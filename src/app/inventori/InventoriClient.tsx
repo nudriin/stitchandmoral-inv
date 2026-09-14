@@ -82,15 +82,18 @@ export function InventoriClient({ initialItems }: Props) {
     setSaving(true);
 
     const formData = new FormData(e.currentTarget);
-    const kode_jas = (formData.get("kode_jas") as string) || `JAS-${Date.now()}`;
+    const kode_jas =
+      editingItem?.kode_jas ||
+      (formData.get("kode_jas") as string)?.trim() ||
+      `JAS-${Date.now()}`;
     const nama_jas = formData.get("nama_jas") as string;
     const jenis_jas = formData.get("jenis_jas") as string;
     const warna = formData.get("warna") as string;
     const ukuran = formData.get("ukuran") as string;
     const harga_default = Number(formData.get("harga_default") || 0);
     const jumlah_stok = Number(formData.get("jumlah_stok") || 0);
-    const stok_tersedia = Number(formData.get("stok_tersedia") ?? jumlah_stok);
-    const stok_disewa = Number(formData.get("stok_disewa") || 0);
+    const stok_disewa = Number(editingItem?.stok_disewa ?? 0);
+    const stok_tersedia = Math.max(0, jumlah_stok - stok_disewa);
     const kondisi = formData.get("kondisi") as string;
     const status_laundry = formData.get("status_laundry") as string;
     const lokasi = formData.get("lokasi") as string;
@@ -455,9 +458,16 @@ export function InventoriClient({ initialItems }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
           <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-zinc-800">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-zinc-100">
-                {editingItem?.id ? "Edit Barang Inventori" : "Tambah Barang Baru"}
-              </h2>
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-zinc-100">
+                  {editingItem?.id ? "Edit Barang Inventori" : "Tambah Barang Baru"}
+                </h2>
+                {editingItem?.kode_jas && (
+                  <span className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-semibold border border-slate-200 dark:border-zinc-700">
+                    {editingItem.kode_jas}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -468,6 +478,7 @@ export function InventoriClient({ initialItems }: Props) {
             </div>
 
             <form onSubmit={handleSave} className="space-y-4 text-sm">
+              <input type="hidden" name="kode_jas" value={editingItem?.kode_jas || ""} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">

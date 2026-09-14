@@ -1,6 +1,37 @@
 import type { Transaksi, Inventori, TransactionItem } from "@/types/database";
 
 /**
+ * Memeriksa apakah suatu item pada transaksi cocok dengan barang di inventori.
+ * Prioritas 1: Pencocokan kode_jas eksak (kodeJas === kode_jas)
+ * Prioritas 2 (Fallback): Pencocokan berdasarkan nama_jas, ukuran, dan warna (tahan terhadap mutasi kode/edit stok)
+ */
+export function isTransactionItemMatch(
+  txItem: { kodeJas?: string; namaJas?: string; ukuran?: string; warna?: string; jenisJas?: string },
+  target: { kode_jas?: string; nama_jas?: string; ukuran?: string; warna?: string; jenis_jas?: string }
+): boolean {
+  if (!txItem || !target) return false;
+
+  // 1. Exact match by code
+  if (txItem.kodeJas && target.kode_jas && txItem.kodeJas === target.kode_jas) {
+    return true;
+  }
+
+  // 2. Robust fallback match by name + size + color
+  if (txItem.namaJas && target.nama_jas) {
+    const normalize = (s?: string) => (s || "").trim().toLowerCase();
+    const sameName = normalize(txItem.namaJas) === normalize(target.nama_jas);
+    const sameSize = !txItem.ukuran || !target.ukuran || normalize(txItem.ukuran) === normalize(target.ukuran);
+    const sameColor = !txItem.warna || !target.warna || normalize(txItem.warna) === normalize(target.warna);
+
+    if (sameName && sameSize && sameColor) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Memeriksa apakah dua rentang tanggal saling bertumpukan (overlap).
  * Interval A: [startA, endA]
  * Interval B: [startB, endB]
@@ -52,18 +83,21 @@ export interface ItemBookingConflict {
  */
 export function calculateBookedQuantity({
   kodeJas,
+  targetItem,
   startDate,
   returnDate,
   transactions,
   excludeTransactionId,
 }: {
-  kodeJas: string;
+  kodeJas?: string;
+  targetItem?: { kode_jas?: string; nama_jas?: string; ukuran?: string; warna?: string; jenis_jas?: string };
   startDate: string;
   returnDate: string;
   transactions: Transaksi[];
   excludeTransactionId?: string;
 }): { bookedQty: number; conflictingBookings: ConflictingBooking[] } {
-  if (!kodeJas || !startDate || !returnDate) {
+  const target = targetItem || (kodeJas ? { kode_jas: kodeJas } : null);
+  if (!target || !startDate || !returnDate) {
     return { bookedQty: 0, conflictingBookings: [] };
   }
 
@@ -83,7 +117,7 @@ export function calculateBookedQuantity({
     if (isDateRangeOverlapping(startDate, returnDate, tx.tanggal_sewa, tx.tanggal_kembali)) {
       if (Array.isArray(tx.items)) {
         for (const item of tx.items) {
-          if (item.kodeJas === kodeJas) {
+          if (isTransactionItemMatch(item, target)) {
             const qty = Number(item.jumlah) || 1;
             bookedQty += qty;
             conflictingBookings.push({
@@ -128,6 +162,7 @@ export function getItemBookingAvailability({
   const totalStock = Number(item.jumlah_stok ?? item.stok_tersedia ?? 1);
   const { bookedQty, conflictingBookings } = calculateBookedQuantity({
     kodeJas: item.kode_jas,
+    targetItem: item,
     startDate,
     returnDate,
     transactions,
@@ -160,7 +195,7 @@ export function checkBookingConflicts({
 }: {
   startDate: string;
   returnDate: string;
-  items: { kodeJas: string; namaJas?: string; jumlah: number }[];
+  items: { kodeJas: string; namaJas?: string; jumlah: number; ukuran?: string; warna?: string }[];
   transactions: Transaksi[];
   inventory: Inventori[];
   excludeTransactionId?: string;
@@ -170,12 +205,13 @@ export function checkBookingConflicts({
   for (const requestedItem of items) {
     if (!requestedItem.kodeJas || requestedItem.jumlah <= 0) continue;
 
-    const inv = inventory.find((i) => i.kode_jas === requestedItem.kodeJas);
+    const inv = inventory.find((i) => isTransactionItemMatch(requestedItem, i));
     const totalStock = inv ? Number(inv.jumlah_stok ?? inv.stok_tersedia ?? 1) : 1;
     const namaJas = inv?.nama_jas || requestedItem.namaJas || requestedItem.kodeJas;
 
     const { bookedQty, conflictingBookings } = calculateBookedQuantity({
       kodeJas: requestedItem.kodeJas,
+      targetItem: inv || requestedItem,
       startDate,
       returnDate,
       transactions,
