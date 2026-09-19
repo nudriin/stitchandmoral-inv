@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { formatRupiah, getDriveThumbnail } from "@/lib/utils";
-import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List, X } from "lucide-react";
+import { Plus, Search, Layers, Edit2, Trash2, Image as ImageIcon, Loader2, LayoutGrid, List, X, PackagePlus, ArrowRight, Boxes, Check } from "lucide-react";
 import type { Inventori } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { useDialog } from "@/components/ModalDialogProvider";
@@ -21,6 +21,13 @@ export function InventoriClient({ initialItems }: Props) {
   const [editingItem, setEditingItem] = useState<Partial<Inventori> | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // Quick Add Stock State
+  const [stockModalOpen, setStockModalOpen] = useState(false);
+  const [selectedStockItem, setSelectedStockItem] = useState<Inventori | null>(null);
+  const [addStockQty, setAddStockQty] = useState<number>(1);
+  const [savingStock, setSavingStock] = useState(false);
+  const [stockSearchQuery, setStockSearchQuery] = useState("");
 
   const supabase = createClient();
 
@@ -178,6 +185,75 @@ export function InventoriClient({ initialItems }: Props) {
     }
   }
 
+  async function handleAddStock(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selectedStockItem || !selectedStockItem.id) {
+      showAlert({
+        title: "Barang Belum Dipilih",
+        message: "Silakan pilih barang yang ingin ditambahkan stoknya.",
+        type: "warning",
+      });
+      return;
+    }
+
+    if (addStockQty <= 0) {
+      showAlert({
+        title: "Jumlah Tidak Valid",
+        message: "Jumlah tambahan stok minimal 1 unit.",
+        type: "warning",
+      });
+      return;
+    }
+
+    setSavingStock(true);
+    const prevTotal = Number(selectedStockItem.jumlah_stok || 0);
+    const prevDisewa = Number(selectedStockItem.stok_disewa || 0);
+    const newTotal = prevTotal + Number(addStockQty);
+    const newAvailable = Math.max(0, newTotal - prevDisewa);
+
+    const { data, error } = await supabase
+      .from("inventori")
+      .update({
+        jumlah_stok: newTotal,
+        stok_tersedia: newAvailable,
+      })
+      .eq("id", selectedStockItem.id)
+      .select()
+      .single();
+
+    if (error) {
+      showAlert({
+        title: "Gagal Menambah Stok",
+        message: error.message,
+        type: "danger",
+      });
+    } else if (data) {
+      setItems((prev) => prev.map((item) => (item.id === data.id ? data : item)));
+      setStockModalOpen(false);
+      showAlert({
+        title: "Stok Berhasil Ditambahkan",
+        message: `Berhasil menambahkan +${addStockQty} unit untuk "${data.nama_jas}" (${data.kode_jas}). Total stok sekarang: ${data.jumlah_stok} unit (Tersedia: ${data.stok_tersedia} unit).`,
+        type: "success",
+      });
+    }
+
+    setSavingStock(false);
+  }
+
+  const stockSelectableItems = useMemo(() => {
+    if (!stockSearchQuery.trim()) return items.slice(0, 15);
+    const q = stockSearchQuery.trim().toLowerCase();
+    return items
+      .filter(
+        (item) =>
+          item.nama_jas.toLowerCase().includes(q) ||
+          item.kode_jas.toLowerCase().includes(q) ||
+          item.warna?.toLowerCase().includes(q) ||
+          item.ukuran?.toLowerCase().includes(q)
+      )
+      .slice(0, 20);
+  }, [items, stockSearchQuery]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -192,7 +268,7 @@ export function InventoriClient({ initialItems }: Props) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <div className="flex bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-1 shadow-sm">
             <button
               onClick={() => setViewMode("card")}
@@ -220,10 +296,23 @@ export function InventoriClient({ initialItems }: Props) {
 
           <button
             onClick={() => {
+              setSelectedStockItem(null);
+              setAddStockQty(1);
+              setStockSearchQuery("");
+              setStockModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm transition shadow-sm cursor-pointer"
+          >
+            <PackagePlus className="w-4 h-4" />
+            <span>Tambah Stok</span>
+          </button>
+
+          <button
+            onClick={() => {
               setEditingItem(null);
               setModalOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-sm transition shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold text-xs sm:text-sm transition shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Tambah Barang</span>
@@ -315,6 +404,18 @@ export function InventoriClient({ initialItems }: Props) {
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setSelectedStockItem(item);
+                          setAddStockQty(1);
+                          setStockSearchQuery("");
+                          setStockModalOpen(true);
+                        }}
+                        className="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 transition cursor-pointer"
+                        title="Tambah Stok Barang"
+                      >
+                        <PackagePlus className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => {
                           setEditingItem(item);
@@ -418,6 +519,18 @@ export function InventoriClient({ initialItems }: Props) {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setSelectedStockItem(item);
+                                setAddStockQty(1);
+                                setStockSearchQuery("");
+                                setStockModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-200 transition cursor-pointer"
+                              title="Tambah Stok Barang"
+                            >
+                              <PackagePlus className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => {
                                 setEditingItem(item);
@@ -649,6 +762,261 @@ export function InventoriClient({ initialItems }: Props) {
                   className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-semibold shadow transition cursor-pointer disabled:opacity-50"
                 >
                   {saving ? "Menyimpan..." : "Simpan Barang"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Stock Modal */}
+      {stockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <PackagePlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-zinc-100">
+                    Tambah Stok Barang
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Tambahkan jumlah unit stok baru ke inventori
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStockModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStock} className="space-y-4">
+              {/* Item Selector / Preview */}
+              {!selectedStockItem ? (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300">
+                    Pilih Barang yang Ingin Ditambahkan Stoknya *
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
+                    <input
+                      type="text"
+                      placeholder="Ketik nama, kode jas, warna, atau ukuran..."
+                      value={stockSearchQuery}
+                      onChange={(e) => setStockSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 focus:border-emerald-500 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-900 dark:text-zinc-100 outline-none"
+                    />
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 dark:border-zinc-800 rounded-2xl p-2 bg-slate-50/50 dark:bg-zinc-950/50">
+                    {stockSelectableItems.length > 0 ? (
+                      stockSelectableItems.map((item) => {
+                        const thumb = getDriveThumbnail(item.foto_url);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setSelectedStockItem(item)}
+                            className="w-full flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800/80 hover:border-emerald-500 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-left transition cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt={item.nama_jas}
+                                  className="w-9 h-9 object-cover rounded-lg border border-slate-200 dark:border-zinc-800 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 shrink-0">
+                                  <ImageIcon className="w-4 h-4" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+                                  {item.nama_jas}
+                                </p>
+                                <p className="text-[10.5px] text-slate-500 dark:text-zinc-400 font-mono truncate">
+                                  {item.kode_jas} • {item.warna} (Ukuran: {item.ukuran})
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 pl-2">
+                              <span className="text-[11px] font-mono font-bold text-slate-700 dark:text-zinc-300">
+                                Stok: {item.jumlah_stok}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="py-6 text-center text-xs text-slate-400 dark:text-zinc-500">
+                        Tidak ada barang yang cocok dengan pencarian.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Selected Item Card */
+                <div className="p-3.5 bg-slate-50 dark:bg-zinc-950 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {getDriveThumbnail(selectedStockItem.foto_url) ? (
+                        <img
+                          src={getDriveThumbnail(selectedStockItem.foto_url)}
+                          alt={selectedStockItem.nama_jas}
+                          className="w-12 h-12 object-cover rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-100 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 shrink-0">
+                          <ImageIcon className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 font-medium">
+                          {selectedStockItem.jenis_jas || "Jas"}
+                        </span>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-zinc-100 truncate mt-0.5">
+                          {selectedStockItem.nama_jas}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
+                          {selectedStockItem.kode_jas} • {selectedStockItem.warna} (Ukuran: {selectedStockItem.ukuran})
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStockItem(null)}
+                      className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold underline shrink-0 cursor-pointer pt-1"
+                    >
+                      Ganti
+                    </button>
+                  </div>
+
+                  {/* Current Status Pills */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 dark:border-zinc-800 text-center">
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl border border-slate-200/60 dark:border-zinc-800">
+                      <span className="text-[10px] text-slate-400 block">Total Stok</span>
+                      <span className="font-mono font-bold text-sm text-slate-900 dark:text-zinc-100">
+                        {selectedStockItem.jumlah_stok}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl border border-slate-200/60 dark:border-zinc-800">
+                      <span className="text-[10px] text-slate-400 block">Tersedia</span>
+                      <span className="font-mono font-bold text-sm text-emerald-600 dark:text-emerald-400">
+                        {selectedStockItem.stok_tersedia}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-900 p-2 rounded-xl border border-slate-200/60 dark:border-zinc-800">
+                      <span className="text-[10px] text-slate-400 block">Disewa</span>
+                      <span className="font-mono font-bold text-sm text-amber-600 dark:text-amber-400">
+                        {selectedStockItem.stok_disewa || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quantity to Add Input */}
+              {selectedStockItem && (
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
+                      Jumlah Tambahan Stok (Unit) *
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAddStockQty((prev) => Math.max(1, prev - 1))}
+                        className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 font-bold text-base flex items-center justify-center transition cursor-pointer shrink-0"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        value={addStockQty}
+                        onChange={(e) => setAddStockQty(Math.max(1, Number(e.target.value) || 1))}
+                        className="flex-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-2 px-3 text-center text-base font-bold font-mono text-slate-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAddStockQty((prev) => prev + 1)}
+                        className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 font-bold text-base flex items-center justify-center transition cursor-pointer shrink-0"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Quick Add Buttons */}
+                    <div className="flex gap-2 mt-2">
+                      {[1, 2, 5, 10].map((qty) => (
+                        <button
+                          key={qty}
+                          type="button"
+                          onClick={() => setAddStockQty((prev) => (addStockQty === 1 && qty !== 1 ? qty : prev + qty))}
+                          className="flex-1 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200 dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300 dark:text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                        >
+                          +{qty} Unit
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Summary / Calculation preview */}
+                  <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
+                    <div className="flex justify-between text-xs text-slate-600 dark:text-zinc-300">
+                      <span>Total Stok Baru:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-zinc-100">
+                        {selectedStockItem.jumlah_stok} →{" "}
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          {selectedStockItem.jumlah_stok + addStockQty} Unit
+                        </span>{" "}
+                        (+{addStockQty})
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-600 dark:text-zinc-300">
+                      <span>Stok Tersedia Baru:</span>
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {selectedStockItem.stok_tersedia + addStockQty} Unit
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setStockModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100 font-medium text-xs sm:text-sm cursor-pointer transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingStock || !selectedStockItem}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {savingStock ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PackagePlus className="w-4 h-4" />
+                      <span>Tambah Stok (+{addStockQty} Unit)</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
