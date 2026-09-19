@@ -49,6 +49,7 @@ function extractSuitSchedule({ inventory, transactions, queriedStartDate, querie
 
     if (queriedStartDate && queriedReturnDate) {
       let bookedOnDate = 0;
+      const queriedSchedules = [];
       for (const sch of schedules) {
         if (
           isDateRangeOverlapping(
@@ -59,12 +60,14 @@ function extractSuitSchedule({ inventory, transactions, queriedStartDate, querie
           )
         ) {
           bookedOnDate += sch.bookedQty;
+          queriedSchedules.push(sch);
         }
       }
       const availableOnDate = Math.max(0, totalStock - bookedOnDate);
       result.bookedOnQueriedDate = bookedOnDate;
       result.availableOnQueriedDate = availableOnDate;
       result.isFullyBookedOnQueriedDate = availableOnDate <= 0;
+      result.queriedSchedules = queriedSchedules;
     }
 
     return result;
@@ -316,3 +319,53 @@ test("Ketersediaan: mengekstrak catatan transaksi (ukuran celana/khusus) pada ja
   assert.equal(scheduleItem.catatan, "Ukuran celana 34, dasi merah maroon");
   assert.ok(scheduleItem.catatan.toLowerCase().includes("celana 34"));
 });
+
+test("Ketersediaan: queriedSchedules hanya menyertakan transaksi yang tumpang tindih dengan rentang tanggal", () => {
+  const sampleInventory = [
+    {
+      id: "inv-celana-34",
+      kode_jas: "JAS-CELANA-KM-34",
+      nama_jas: "Celana Kingsman Black (34)",
+      ukuran: "34",
+      jumlah_stok: 1,
+      stok_tersedia: 1,
+    },
+  ];
+
+  const sampleTransactions = [
+    {
+      id: "tx-vincent",
+      kode_transaksi: "TRX-VINCENT",
+      nama_customer: "Vincent",
+      tanggal_sewa: "2026-09-19",
+      tanggal_kembali: "2026-09-20",
+      status: "Sedang Disewa",
+      items: [{ kodeJas: "JAS-CELANA-KM-34", jumlah: 1 }],
+    },
+    {
+      id: "tx-samuel",
+      kode_transaksi: "TRX-SAMUEL",
+      nama_customer: "Samuel Simanullang",
+      tanggal_sewa: "2026-09-30",
+      tanggal_kembali: "2026-10-01",
+      status: "Booking",
+      items: [{ kodeJas: "JAS-CELANA-KM-34", jumlah: 1 }],
+    },
+  ];
+
+  // Query tanggal 30 Sep - 1 Okt 2026
+  const result = extractSuitSchedule({
+    inventory: sampleInventory,
+    transactions: sampleTransactions,
+    queriedStartDate: "2026-09-30",
+    queriedReturnDate: "2026-10-01",
+  });
+
+  const celana34 = result.find((r) => r.item.kode_jas === "JAS-CELANA-KM-34");
+  assert.ok(celana34);
+  assert.equal(celana34.activeSchedules.length, 2, "Semua jadwal aktif ada 2 (Vincent & Samuel)");
+  assert.equal(celana34.queriedSchedules.length, 1, "Hanya 1 jadwal yang bertabrakan pada 30 Sep - 1 Okt");
+  assert.equal(celana34.queriedSchedules[0].nama_customer, "Samuel Simanullang");
+  assert.ok(!celana34.queriedSchedules.some((s) => s.nama_customer === "Vincent"), "Vincent (19-20 Sep) tidak boleh muncul pada query 30 Sep - 1 Okt");
+});
+

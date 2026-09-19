@@ -132,6 +132,7 @@ export function KetersediaanClient({
 
   // Overall Statistics
   const stats = useMemo(() => {
+    const isQueried = Boolean(startDate && returnDate);
     const totalModels = inventory.length;
     let totalPhysicalStock = 0;
     let totalAvailableToday = 0;
@@ -142,11 +143,12 @@ export function KetersediaanClient({
       totalPhysicalStock += s.totalStock;
       totalAvailableToday += s.availableToday;
       if (s.isBookedToday) totalBookedToday += s.totalStock - s.availableToday;
-      if (s.activeSchedules.length > 0) totalSuitsWithBookings++;
+      const relevantSchedules = isQueried ? (s.queriedSchedules || []) : s.activeSchedules;
+      if (relevantSchedules.length > 0) totalSuitsWithBookings++;
     });
 
     return { totalModels, totalPhysicalStock, totalAvailableToday, totalBookedToday, totalSuitsWithBookings };
-  }, [inventory, suitsWithSchedule]);
+  }, [inventory, suitsWithSchedule, startDate, returnDate]);
 
   // Quick Date Presets
   const setQuickPreset = (preset: "today" | "tomorrow" | "weekend" | "reset") => {
@@ -267,11 +269,12 @@ export function KetersediaanClient({
     let matchSchedulesCount = 0;
 
     filteredSuits.forEach((s) => {
-      let schedules = s.activeSchedules;
+      const baseSchedules = (startDate && returnDate && s.queriedSchedules) ? s.queriedSchedules : s.activeSchedules;
+      let schedules = baseSchedules;
       if (printStatusScope === "booking") {
-        schedules = s.activeSchedules.filter((x) => x.status === "Booking");
+        schedules = baseSchedules.filter((x) => x.status === "Booking");
       } else if (printStatusScope === "disewa") {
-        schedules = s.activeSchedules.filter((x) => x.status === "Sedang Disewa" || x.status === "Terlambat");
+        schedules = baseSchedules.filter((x) => x.status === "Sedang Disewa" || x.status === "Terlambat");
       }
 
       if (printIncludeReady || schedules.length > 0) {
@@ -723,6 +726,7 @@ export function KetersediaanClient({
             const isQueried = Boolean(startDate && returnDate);
             const displayAvailable = isQueried ? (availableOnQueriedDate ?? 0) : availableToday;
             const isFull = displayAvailable <= 0;
+            const schedulesToDisplay = isQueried ? (suitData.queriedSchedules || []) : activeSchedules;
 
             return (
               <div
@@ -776,15 +780,15 @@ export function KetersediaanClient({
                   <div className="space-y-1.5 pt-1">
                     <span className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>Jadwal ({activeSchedules.length})</span>
+                      <span>{isQueried ? "Jadwal Rentang Terpilih" : "Jadwal"} ({schedulesToDisplay.length})</span>
                     </span>
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                      {activeSchedules.length === 0 ? (
+                      {schedulesToDisplay.length === 0 ? (
                         <div className="p-2 rounded-xl text-[11px] bg-slate-50 dark:bg-zinc-800/40 text-slate-500 dark:text-zinc-400 text-center">
-                          Tidak ada booking aktif
+                          {isQueried ? "Tidak ada booking pada tanggal ini" : "Tidak ada booking aktif"}
                         </div>
                       ) : (
-                        activeSchedules.map((sch, idx) => (
+                        schedulesToDisplay.map((sch, idx) => (
                           <div
                             key={idx}
                             className="p-2.5 rounded-xl text-[11px] border bg-slate-50 dark:bg-zinc-800/60 border-slate-200 dark:border-zinc-700 space-y-1.5"
@@ -946,24 +950,39 @@ export function KetersediaanClient({
 
                   {/* Body: Schedule Timeline & Catatan */}
                   <div className="p-4">
-                    {activeSchedules.length === 0 ? (
-                      <div className="py-4 px-4 rounded-xl bg-slate-50 dark:bg-zinc-800/40 border border-dashed border-slate-200 dark:border-zinc-700 text-center text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-2">
-                        <Sparkles className="w-4 h-4" />
-                        <span>Tidak ada booking aktif untuk jas ini (Seluruh {totalStock} unit siap disewa kapan saja).</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>Daftar Booking & Catatan Ukuran ({activeSchedules.length} Transaksi)</span>
-                        </div>
+                    {(() => {
+                      const schedulesToDisplay = isQueried
+                        ? (suitData.queriedSchedules || [])
+                        : activeSchedules;
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {activeSchedules.map((sch, sIdx) => {
-                            const isOverlapWithQuery =
-                              isQueried &&
-                              sch.tanggal_sewa <= returnDate &&
-                              sch.tanggal_kembali >= startDate;
+                      if (schedulesToDisplay.length === 0) {
+                        return (
+                          <div className="py-4 px-4 rounded-xl bg-slate-50 dark:bg-zinc-800/40 border border-dashed border-slate-200 dark:border-zinc-700 text-center text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-2">
+                            <Sparkles className="w-4 h-4" />
+                            <span>
+                              {isQueried
+                                ? `Tidak ada jadwal booking yang bertabrakan pada rentang tanggal terpilih.`
+                                : `Tidak ada booking aktif untuk jas ini (Seluruh ${totalStock} unit siap disewa kapan saja).`}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>
+                              Daftar Booking & Catatan Ukuran ({schedulesToDisplay.length} Transaksi{isQueried ? " Rentang Terpilih" : ""})
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {schedulesToDisplay.map((sch, sIdx) => {
+                              const isOverlapWithQuery =
+                                isQueried &&
+                                sch.tanggal_sewa <= returnDate &&
+                                sch.tanggal_kembali >= startDate;
 
                             const sStart = new Date(sch.tanggal_sewa + "T00:00:00").getTime();
                             const sEnd = new Date(sch.tanggal_kembali + "T00:00:00").getTime();
@@ -1058,9 +1077,10 @@ export function KetersediaanClient({
                           })}
                         </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
+              </div>
               );
             })}
           </div>

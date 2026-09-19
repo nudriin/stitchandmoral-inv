@@ -69,11 +69,12 @@ function filterSuitsForPrint(
 ): SuitWithSchedule[] {
   return suits
     .map((suitData) => {
-      let schedules = suitData.activeSchedules;
+      const baseSchedules = suitData.queriedSchedules ?? suitData.activeSchedules;
+      let schedules = baseSchedules;
       if (statusFilter === "booking") {
-        schedules = suitData.activeSchedules.filter((s) => s.status === "Booking");
+        schedules = baseSchedules.filter((s) => s.status === "Booking");
       } else if (statusFilter === "disewa") {
-        schedules = suitData.activeSchedules.filter(
+        schedules = baseSchedules.filter(
           (s) => s.status === "Sedang Disewa" || s.status === "Terlambat"
         );
       }

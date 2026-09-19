@@ -22,6 +22,7 @@ export interface SuitWithSchedule {
   availableOnQueriedDate?: number;
   bookedOnQueriedDate?: number;
   isFullyBookedOnQueriedDate?: boolean;
+  queriedSchedules?: SuitBookingScheduleItem[];
 }
 
 /**
@@ -87,9 +88,10 @@ export function getSuitsWithSchedule({
       isBookedToday: bookedTodayCount > 0,
     };
 
-    // If query dates provided, calculate specific date availability
+    // If query dates provided, calculate specific date availability and filter overlapping schedules
     if (queriedStartDate && queriedReturnDate) {
       let bookedOnDate = 0;
+      const queriedSchedules: SuitBookingScheduleItem[] = [];
       for (const sch of schedules) {
         if (
           isDateRangeOverlapping(
@@ -100,12 +102,14 @@ export function getSuitsWithSchedule({
           )
         ) {
           bookedOnDate += sch.bookedQty;
+          queriedSchedules.push(sch);
         }
       }
       const availableOnDate = Math.max(0, totalStock - bookedOnDate);
       result.bookedOnQueriedDate = bookedOnDate;
       result.availableOnQueriedDate = availableOnDate;
       result.isFullyBookedOnQueriedDate = availableOnDate <= 0;
+      result.queriedSchedules = queriedSchedules;
     }
 
     return result;
